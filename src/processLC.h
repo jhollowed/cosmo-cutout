@@ -31,13 +31,17 @@
 // Cosmotools
 #define REAL double
 
+// Hacc Types
+#define POSVEL_T float
+#define ID_T int64_t
+
 using namespace std;
 using namespace gio;
 
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
-               vector<float> theta_bounds, vector<float> phi_bounds);
+               vector<float> theta_bounds, vector<float> phi_bounds, int rank, int numranks);
 
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
-               vector<float> halo_pos, float boxLength);
+               vector<float> halo_pos, float boxLength, int rank, int numranks);
 
 #endif

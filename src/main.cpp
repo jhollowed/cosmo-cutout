@@ -114,8 +114,12 @@ int main( int argc, char** argv ) {
     // Note that the first use case describe does not perform the coordinate 
     // rotation which is described in the second. So, cutouts returned will
     // not necessarily be square, or symmetrical.
-    
-    MPI_Init(&argc, &argv);
+   
+    // start MPI 
+		MPI_Init(&argc, &argv);
+    int rank, numranks;
+		MPI_Comm_size(MPI_COMM_WORLD, &numranks);
+		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     cout << "\n\n---------- Starting ----------" << endl;
     char cart[3] = {'x', 'y', 'z'};
@@ -230,9 +234,9 @@ int main( int argc, char** argv ) {
         
     // call overloaded processing function
     if(customHalo){
-        processLC(input_lc_dir, out_dir, step_strings, haloPos, boxLength);
+        processLC(input_lc_dir, out_dir, step_strings, haloPos, boxLength, rank, numranks);
     }else{
-        processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut);
+        processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, rank, numranks);
     }
 
     MPI_Finalize();
