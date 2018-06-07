@@ -1,3 +1,6 @@
+// Joe Hollowed
+// CPAC 2018
+
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
@@ -20,13 +23,8 @@
 // source files
 #include "util.h"
 #include "processLC.h"
- 
-// Generic IO
-//#include "GenericIO.h"
 
 using namespace std;
-//using namespace gio;
-
 
 //////////////////////////////////////////////////////
 //
@@ -47,7 +45,8 @@ int main( int argc, char** argv ) {
     //
     // Define the ɵ and ϕ bounds explicitly:
     // 
-    // lc_cutout <input lightcone dir> <output dir> <max redshift> --theta <ɵ_center> <dɵ> --phi <ϕ_center> <dϕ>
+    // lc_cutout <input lightcone dir> <output dir> <max redshift> --theta <ɵ_center> <dɵ> 
+    // --phi <ϕ_center> <dϕ>
     // 
     // where the ϕ_center argument is the azimuthal coordinate of the center of the 
     // field of view that one wishes to cut out of the lightcone, and dϕ is the 
@@ -66,7 +65,8 @@ int main( int argc, char** argv ) {
     // a certain width, in Mpc/h, centered on a certain cartesian positon, 
     // (x, y, z) Mpc/h (intended to be used for cutting out cluster-sized halos):
     //
-    // lc_cutout <input lightcone dir> <output dir> <max redshift> --halo <x> <y> <z> --boxLength <box length>
+    // lc_cutout <input lightcone dir> <output dir> <max redshift> --halo <x> <y> <z> 
+    // --boxLength <box length>
     //
     // The --halo and --boxLength flags can be replaced with -h and -b
     //
@@ -114,20 +114,20 @@ int main( int argc, char** argv ) {
     // Note that the first use case describe does not perform the coordinate 
     // rotation which is described in the second. So, cutouts returned will
     // not necessarily be square, or symmetrical.
-   
-    // start MPI 
-		MPI_Init(&argc, &argv);
-    int rank, numranks;
-		MPI_Comm_size(MPI_COMM_WORLD, &numranks);
-		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    cout << "\n\n---------- Starting ----------" << endl;
+    // start MPI 
+    MPI_Init(&argc, &argv);
+    int rank, numranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &numranks);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if(rank == 0){ cout << "\n\n---------- Starting ----------" << endl; }
     char cart[3] = {'x', 'y', 'z'};
-    
+
     string input_lc_dir, out_dir;
     input_lc_dir = string(argv[1]);
     out_dir = string(argv[2]);
-    
+
     // check format of in/out dirs
     if(input_lc_dir[input_lc_dir.size()-1] != '/'){
         ostringstream modified_in_dir;
@@ -141,24 +141,26 @@ int main( int argc, char** argv ) {
     }
     struct stat info;
     if( stat( out_dir.c_str(), &info ) != 0 ){
-	ostringstream badOut;
-	badOut << "Cannot access specified output directory " << out_dir;
+        ostringstream badOut;
+        badOut << "Cannot access specified output directory " << out_dir;
         throw runtime_error( badOut.str() );
     }
-    
-    cout << "using lightcone at ";
-    cout << input_lc_dir << endl;
-     
+
+    if(rank == 0){ cout << "using lightcone at "; } 
+    if(rank == 0){ cout << input_lc_dir << endl; }
+
     // build step_strings vector by locating the step present in the lightcone
     // data directory that is nearest the redshift requested by the user
     float maxZ = atof(argv[3]);
     int minStep = zToStep(maxZ);    
     vector<string> step_strings;
-    cout << "MINSTEP: " << minStep << endl;
     getLCSteps(minStep, input_lc_dir, step_strings);
-    cout << "steps to include to z=" << maxZ << ": ";
-    for(int i=0; i<step_strings.size(); ++i){ cout << step_strings[i] << " ";}
-    cout << endl;
+    if(rank == 0){ 
+        cout << "MINSTEP: " << minStep << endl;
+        cout << "steps to include to z=" << maxZ << ": ";
+        for(int i=0; i<step_strings.size(); ++i){ cout << step_strings[i] << " ";}
+        cout << endl;
+    }
 
     // might not use all of these but whatever
     vector<float> theta_cut(2);
@@ -169,14 +171,14 @@ int main( int argc, char** argv ) {
     // check that supplied arguments are valid
     vector<string> args(argv+1, argv + argc);
     bool customThetaBounds = int((find(args.begin(), args.end(), "-t") != args.end()) ||
-                             (find(args.begin(), args.end(), "--theta") != args.end()));
+            (find(args.begin(), args.end(), "--theta") != args.end()));
     bool customPhiBounds = int((find(args.begin(), args.end(), "-p") != args.end()) ||
-                           (find(args.begin(), args.end(), "--phi") != args.end()));
+            (find(args.begin(), args.end(), "--phi") != args.end()));
     bool customHalo = int((find(args.begin(), args.end(), "-h") != args.end()) ||
-                      (find(args.begin(), args.end(), "--halo") != args.end()));
+            (find(args.begin(), args.end(), "--halo") != args.end()));
     bool customBox = int((find(args.begin(), args.end(), "-b") != args.end()) ||
-                     (find(args.begin(), args.end(), "--boxLength") != args.end()));
-    
+            (find(args.begin(), args.end(), "--boxLength") != args.end()));
+
     // there are two general use cases of this cutout code, as described in the 
     // docstring below the declaration of this main function. Here, exceptons are 
     // thrown to prevent confused input arguments which mix those two use cases.
@@ -188,7 +190,7 @@ int main( int argc, char** argv ) {
     }
     if(customHalo & customThetaBounds){
         throw invalid_argument("-t and -p options must not be used in the case " \
-                                    "that -h and -b arguments are passed");
+                "that -h and -b arguments are passed");
     }
     if(!customThetaBounds && !customPhiBounds && !customHalo && !customBox){
         throw invalid_argument("Valid options are -h, -b, -t, and -p");
@@ -219,19 +221,21 @@ int main( int argc, char** argv ) {
             boxLength = strtof(argv[++i], NULL);
         }
     }
-
-    if(customHalo){
-        cout << "target halo: ";
-        for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[i] << " ";}
-        cout << endl;
-        cout << "box length: " << boxLength << " Mpc";
-    }else{
-        cout << "theta bounds: ";
-        cout << theta_cut[0]/ARCSEC << " -> " << theta_cut[1]/ARCSEC <<" deg"<<endl;
-        cout << "phi bounds: ";
-        cout << phi_cut[0]/ARCSEC << " -> " << phi_cut[1]/ARCSEC <<" deg";
+    
+    if(rank == 0){
+        if(customHalo){
+            cout << "target halo: ";
+            for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[i] << " ";}
+            cout << endl;
+            cout << "box length: " << boxLength << " Mpc";
+        }else{
+            cout << "theta bounds: ";
+            cout << theta_cut[0]/ARCSEC << " -> " << theta_cut[1]/ARCSEC <<" deg"<<endl;
+            cout << "phi bounds: ";
+            cout << phi_cut[0]/ARCSEC << " -> " << phi_cut[1]/ARCSEC <<" deg";
+        }
     }
-        
+
     // call overloaded processing function
     if(customHalo){
         processLC(input_lc_dir, out_dir, step_strings, haloPos, boxLength, rank, numranks);

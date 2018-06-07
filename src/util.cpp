@@ -1,164 +1,10 @@
 #include "util.h"
 
 using namespace std;
-//using namespace gio;
 
 //////////////////////////////////////////////////////
 //
-//         Helper Functions
-//
-//////////////////////////////////////////////////////
-
-float redshift(float a) {
-    // Converts scale factor to redshift.
-    //
-    // Params:
-    // :param a: the scale factor
-    // :return: the redshift corresponding to input a
-    
-    return (1.0f/a)-1.0f;
-}
-
-
-float zToStep(float z, int totSteps, float maxZ){
-    // Function to convert a redshift to a step number, rounding 
-    // toward a = 0.
-    //
-    // Params:
-    // :param z: the input redshift
-    // :totSteps: the total number of steps of the simulation of 
-    //            interest. Note-- the initial conditions are not 
-    //            a step! totSteps should be the maximum snapshot 
-    //            number.
-    // :maxZ: the initial redshift of the simulation
-    // :return: the simulation step corresponding to the input redshift, 
-    //          rounded toward a = 0
-
-    float amin = 1/(maxZ + 1);
-    float amax = 1.0;
-    float adiff = (amax-amin)/(totSteps-1);
-    
-    float a = 1/(1+z);
-    int step = floor((a-amin) / adiff);
-    return step;
-}
-
-//////////////////////////////////////////////////////
-//
-//         Coord Rotation functions
-//
-//////////////////////////////////////////////////////
-
-void sizeMismatch(){ 
-    throw runtime_error("input vectors must have the same length");
-}
-
-float vecPairAngle(const vector<float> &v1,
-                   const vector<float> &v2){
-    // Return the angle between two vectors, in radians
-    //
-    // Params:
-    // :param v1: some three-dimensional vector
-    // :param v2: some other three-dimensional vector
-    // :return: the angle between v1 and v2, in radians
-   
-    // find (v1·v2), |v1|, and |v2|
-    float v1dv2 = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0);
-    float mag_v1 = sqrt(std::inner_product(v1.begin(), v1.end(), v1.begin(), 0.0));
-    float mag_v2 = sqrt(std::inner_product(v2.begin(), v2.end(), v2.begin(), 0.0));
-
-    float theta = acos( v1dv2 / (mag_v1 * mag_v2) );
-    return theta; 
-} 
-
-void cross(const vector<float> &v1, 
-           const vector<float> &v2,
-           vector<float> &v1xv2){
-    // This function calculates the cross product of two three 
-    // dimensional vectors
-    //
-    // Params:
-    // :param v1: some three-dimensional vector
-    // :param v2: some other three-dimensional vector
-    // :param v1xv2: vector to hold the resultant 
-    //               cross-product of vectors v1 and v2
-    // :return: none
-    
-    int n1 = v1.size();
-    int n2 = v2.size();
-    if(n1 != n2){ sizeMismatch(); }
-
-    v1xv2.push_back( v1[1]*v2[2] - v1[2]*v2[1] );
-    v1xv2.push_back( -(v1[0]*v2[2] - v1[2]*v2[0]) );
-    v1xv2.push_back( v1[0]*v2[1] - v1[1]*v2[0] );
-}
-
-
-void normCross(const vector<float> &a,
-           const vector<float> &b,
-           vector<float> &k){
-    // This function returns the normalized cross product of two three-dimensional
-    // vectors. The notation, here, is chosen to match that of the Rodrigues rotation 
-    // formula for the rotation vector k, rather than matching the notation of cross() 
-    // above. Feel free to contact me with urgency if you find this issue troublesome.
-    //
-    // Parms:
-    // :param a: some three-dimensional vector
-    // :param b: some other three-dimensional vector
-    // :param k: vector of size 3 to hold the resultant normalized cross-product of 
-    //           vectors a and b
-    // :return: none
-
-    int na = a.size();
-    int nb = b.size();
-    if(na != nb){ sizeMismatch(); }
-
-    vector<float> axb;
-    cross(a, b, axb);
-    float mag_axb = sqrt(std::inner_product(axb.begin(), axb.end(), axb.begin(), 0.0));
-
-    for(int i=0; i<na; ++i){ k.push_back( axb[i] / mag_axb ); }
-}
-
-
-void rotate(const vector<float> &k_vec,
-            const float B, 
-            const vector<float> &v_vec, 
-            vector<float> &v_rot){ 
-    // This function implements the Rodrigues rotation formula. See the docstrings
-    // under the main() function header for more info.
-    //
-    // Params:
-    // :param k_vec: the normalized axis of rotation
-    // :param B: the angle of rotation, in radians
-    // :param v_vec: a vector to be rotated
-    // :param v_rot: a vector to store the result of rotating v_vec an angle B about k_vec
-    // :return: none
-
-    int nk = k_vec.size();
-    int nv = v_vec.size();
-    if(nk != nv){ sizeMismatch(); }
-    
-    // find (k ⨯ v) and (k·v)
-    vector<float> kxv_vec;
-    cross(k_vec, v_vec, kxv_vec);
-    float kdv = std::inner_product(k_vec.begin(), k_vec.end(), v_vec.begin(), 0.0);
-    
-    // do rotation per-dimension
-    float v;
-    float k, k_x_v;
-    for(int i=0; i<nk; ++i){
-        v = v_vec[i];
-        k = k_vec[i];
-        k_x_v = kxv_vec[i];
-       
-        v_rot.push_back( v*cos(B) + (k_x_v)*sin(B) + k*kdv*(1-cos(B)) );
-    } 
-}
-
-//////////////////////////////////////////////////////
-//
-//             Reading functions
+//             reading functions
 //
 //////////////////////////////////////////////////////
 
@@ -312,3 +158,158 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings){
     }
     return 0;
 }
+
+
+//////////////////////////////////////////////////////
+//
+//                helper functions
+//
+//////////////////////////////////////////////////////
+
+float redshift(float a) {
+    // Converts scale factor to redshift.
+    //
+    // Params:
+    // :param a: the scale factor
+    // :return: the redshift corresponding to input a
+    
+    return (1.0f/a)-1.0f;
+}
+
+
+float zToStep(float z, int totSteps, float maxZ){
+    // Function to convert a redshift to a step number, rounding 
+    // toward a = 0.
+    //
+    // Params:
+    // :param z: the input redshift
+    // :totSteps: the total number of steps of the simulation of 
+    //            interest. Note-- the initial conditions are not 
+    //            a step! totSteps should be the maximum snapshot 
+    //            number.
+    // :maxZ: the initial redshift of the simulation
+    // :return: the simulation step corresponding to the input redshift, 
+    //          rounded toward a = 0
+
+    float amin = 1/(maxZ + 1);
+    float amax = 1.0;
+    float adiff = (amax-amin)/(totSteps-1);
+    
+    float a = 1/(1+z);
+    int step = floor((a-amin) / adiff);
+    return step;
+}
+
+//////////////////////////////////////////////////////
+//
+//         coord rotation functions
+//
+//////////////////////////////////////////////////////
+
+void sizeMismatch(){ 
+    throw runtime_error("input vectors must have the same length");
+}
+
+float vecPairAngle(const vector<float> &v1,
+                   const vector<float> &v2){
+    // Return the angle between two vectors, in radians
+    //
+    // Params:
+    // :param v1: some three-dimensional vector
+    // :param v2: some other three-dimensional vector
+    // :return: the angle between v1 and v2, in radians
+   
+    // find (v1·v2), |v1|, and |v2|
+    float v1dv2 = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0);
+    float mag_v1 = sqrt(std::inner_product(v1.begin(), v1.end(), v1.begin(), 0.0));
+    float mag_v2 = sqrt(std::inner_product(v2.begin(), v2.end(), v2.begin(), 0.0));
+
+    float theta = acos( v1dv2 / (mag_v1 * mag_v2) );
+    return theta; 
+} 
+
+void cross(const vector<float> &v1, 
+           const vector<float> &v2,
+           vector<float> &v1xv2){
+    // This function calculates the cross product of two three 
+    // dimensional vectors
+    //
+    // Params:
+    // :param v1: some three-dimensional vector
+    // :param v2: some other three-dimensional vector
+    // :param v1xv2: vector to hold the resultant 
+    //               cross-product of vectors v1 and v2
+    // :return: none
+    
+    int n1 = v1.size();
+    int n2 = v2.size();
+    if(n1 != n2){ sizeMismatch(); }
+
+    v1xv2.push_back( v1[1]*v2[2] - v1[2]*v2[1] );
+    v1xv2.push_back( -(v1[0]*v2[2] - v1[2]*v2[0]) );
+    v1xv2.push_back( v1[0]*v2[1] - v1[1]*v2[0] );
+}
+
+
+void normCross(const vector<float> &a,
+           const vector<float> &b,
+           vector<float> &k){
+    // This function returns the normalized cross product of two three-dimensional
+    // vectors. The notation, here, is chosen to match that of the Rodrigues rotation 
+    // formula for the rotation vector k, rather than matching the notation of cross() 
+    // above. Feel free to contact me with urgency if you find this issue troublesome.
+    //
+    // Parms:
+    // :param a: some three-dimensional vector
+    // :param b: some other three-dimensional vector
+    // :param k: vector of size 3 to hold the resultant normalized cross-product of 
+    //           vectors a and b
+    // :return: none
+
+    int na = a.size();
+    int nb = b.size();
+    if(na != nb){ sizeMismatch(); }
+
+    vector<float> axb;
+    cross(a, b, axb);
+    float mag_axb = sqrt(std::inner_product(axb.begin(), axb.end(), axb.begin(), 0.0));
+
+    for(int i=0; i<na; ++i){ k.push_back( axb[i] / mag_axb ); }
+}
+
+
+void rotate(const vector<float> &k_vec,
+            const float B, 
+            const vector<float> &v_vec, 
+            vector<float> &v_rot){ 
+    // This function implements the Rodrigues rotation formula. See the docstrings
+    // under the main() function header for more info.
+    //
+    // Params:
+    // :param k_vec: the normalized axis of rotation
+    // :param B: the angle of rotation, in radians
+    // :param v_vec: a vector to be rotated
+    // :param v_rot: a vector to store the result of rotating v_vec an angle B about k_vec
+    // :return: none
+
+    int nk = k_vec.size();
+    int nv = v_vec.size();
+    if(nk != nv){ sizeMismatch(); }
+    
+    // find (k ⨯ v) and (k·v)
+    vector<float> kxv_vec;
+    cross(k_vec, v_vec, kxv_vec);
+    float kdv = std::inner_product(k_vec.begin(), k_vec.end(), v_vec.begin(), 0.0);
+    
+    // do rotation per-dimension
+    float v;
+    float k, k_x_v;
+    for(int i=0; i<nk; ++i){
+        v = v_vec[i];
+        k = k_vec[i];
+        k_x_v = kxv_vec[i];
+       
+        v_rot.push_back( v*cos(B) + (k_x_v)*sin(B) + k*kdv*(1-cos(B)) );
+    } 
+}
+

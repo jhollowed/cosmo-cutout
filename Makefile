@@ -7,11 +7,11 @@ OBJECTS := $(OBJDIR)/util.o $(OBJDIR)/processLC.o $(OBJDIR)/main.o
 
 # Change trunk loc to match current system...
 # Jupiter:
-TRUNK_LOC := /homes/jphollowed/code/lc_interpolation/jupiter
-INCLUDES := -I $(SRCDIR) -I /homes/jphollowed/code/lc_interpolation/genericio
+#TRUNK_LOC := /homes/jphollowed/code/lc_interpolation/jupiter
+#INCLUDES := -I $(SRCDIR) -I /homes/jphollowed/code/lc_interpolation/genericio
 # Cooley:
-#TRUNK_LOC := /home/hollowed/repos/lc_interpolation/cooley
-#INCLUDES := -I $(SRCDIR) -I /home/hollowed/repos/lc_interpolation/genericio
+TRUNK_LOC := /home/hollowed/repos/lc_interpolation/cooley
+INCLUDES := -I $(SRCDIR) -I /home/hollowed/repos/lc_interpolation/genericio
 
 LIBS := $(TRUNK_LOC)/mpi/lib/libGenericIOMPI.a
 

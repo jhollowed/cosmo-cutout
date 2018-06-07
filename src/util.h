@@ -3,6 +3,8 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <string>
 #include <string.h>
@@ -10,26 +12,33 @@
 #include <stdint.h>
 #include <assert.h>
 #include <math.h>
-#include <fstream>
 #include <numeric>
 #include <algorithm>
-#include <sstream>
-#include <omp.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
 #include <vector>
 
-// Generic IO
-//#include "GenericIO.h"
+#include <omp.h>
+#include <mpi.h>
 
 using namespace std;
-//using namespace gio;
-
 
 //////////////////////////////////////////////////////
 //
-//         Helper Functions
+//               reading functions
+//
+//////////////////////////////////////////////////////
+
+int getLCSubdirs(string dir, vector<string> &subdirs);
+
+int getLCFile(string dir, string &file);
+
+int getLCSteps(int minStep, string dir, vector<string> &step_strings);
+
+//////////////////////////////////////////////////////
+//
+//               helper Functions
 //
 //////////////////////////////////////////////////////
 
@@ -39,7 +48,7 @@ float zToStep(float z, int totSteps=499, float maxZ=200.0);
 
 //////////////////////////////////////////////////////
 //
-//         Coord Rotation functions
+//            coord rotation functions
 //
 //////////////////////////////////////////////////////
 
@@ -60,17 +69,4 @@ void rotate(const vector<float> &k_vec,
             const float B, 
             const vector<float> &v_vec, 
             vector<float> &v_rot); 
-
-//////////////////////////////////////////////////////
-//
-//             Reading functions
-//
-//////////////////////////////////////////////////////
-
-int getLCSubdirs(string dir, vector<string> &subdirs);
-
-int getLCFile(string dir, string &file);
-
-int getLCSteps(int minStep, string dir, vector<string> &step_strings);
-
 #endif
