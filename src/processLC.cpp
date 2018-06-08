@@ -266,31 +266,33 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         theta_file_name << step_subdir.str() << "/theta." << step << ".bin";
         phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
-        if(rank == 0){ cout<<"starting to open files"<<endl; } 
-        MPI_File_open(MPI_COMM_WORLD, id_file_name.str().c_str(), 
+        if(rank == 0){ cout<<"starting to open files"<<endl; }
+
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(id_file_name), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
-        MPI_File_open(MPI_COMM_WORLD, x_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(x_file_name), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &x_file);
-        MPI_File_open(MPI_COMM_WORLD, y_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(y_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &y_file);
-        MPI_File_open(MPI_COMM_WORLD, z_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(z_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &z_file);
-        MPI_File_open(MPI_COMM_WORLD, vx_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vx_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
-        MPI_File_open(MPI_COMM_WORLD, vy_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vy_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
-        MPI_File_open(MPI_COMM_WORLD, vz_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vz_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
-        MPI_File_open(MPI_COMM_WORLD, a_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(a_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &a_file);
-        MPI_File_open(MPI_COMM_WORLD, rotation_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(rotation_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
-        MPI_File_open(MPI_COMM_WORLD, replication_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(replication_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
-        MPI_File_open(MPI_COMM_WORLD, theta_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(theta_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
-        MPI_File_open(MPI_COMM_WORLD, phi_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(phi_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
+        
         if(rank == 0){ cout<<"done opening files"<<endl; }
 
         ///////////////////////////////////////////////////////////////
@@ -723,33 +725,34 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
         if(rank == 0){ cout<<"starting to open files"<<endl; }
-        MPI_File_open(MPI_COMM_WORLD, id_file_name.str().c_str(), 
+
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(id_file_name), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
-        MPI_File_open(MPI_COMM_WORLD, x_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(x_file_name), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &x_file);
-        MPI_File_open(MPI_COMM_WORLD, y_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(y_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &y_file);
-        MPI_File_open(MPI_COMM_WORLD, z_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(z_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &z_file);
-        MPI_File_open(MPI_COMM_WORLD, vx_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vx_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
-        MPI_File_open(MPI_COMM_WORLD, vy_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vy_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
-        MPI_File_open(MPI_COMM_WORLD, vz_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vz_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
-        MPI_File_open(MPI_COMM_WORLD, a_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(a_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &a_file);
-        MPI_File_open(MPI_COMM_WORLD, rotation_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(rotation_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
-        MPI_File_open(MPI_COMM_WORLD, replication_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(replication_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
-        MPI_File_open(MPI_COMM_WORLD, theta_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(theta_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
-        MPI_File_open(MPI_COMM_WORLD, phi_file_name.str().c_str(), 
+        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(phi_file_name),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
 
         if(rank == 0){ cout<<"done opening files"<<endl; }
-
+        
         ///////////////////////////////////////////////////////////////
         //
         //                         Do cutting

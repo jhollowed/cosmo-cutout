@@ -18,9 +18,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <vector>
-
 #include <omp.h>
-#include <mpi.h>
 
 using namespace std;
 
@@ -45,6 +43,8 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings);
 float redshift(float a);
 
 float zToStep(float z, int totSteps=499, float maxZ=200.0);
+
+char* sstream_cstr(const ostringstream &sstream);
 
 //////////////////////////////////////////////////////
 //

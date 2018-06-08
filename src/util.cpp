@@ -200,6 +200,24 @@ float zToStep(float z, int totSteps, float maxZ){
     return step;
 }
 
+char* sstream_cstr(const ostringstream &sstream){
+    // This function casts an ostringstream type to a char*. This was 
+    // implemented as a workaround for the fact that the builtin call 
+    // ostringstream.str().c_str() returns a const char*, which is 
+    // incompatible with the expected input types of certain calls of 
+    // old MPI vesions, such as MPI_File_open(), which the Makefile 
+    // for this project uses on BGQ systems (Mira/Cetus). 
+    //
+    // Prams:
+    // :param sstream: an ostringstream object
+    // :return: the contents of sstream as a char*
+
+    vector<char> v(sstream.str().length() + 1);
+    strcpy(&v[0], sstream.str().c_str());
+    char* cstr = &v[0];
+    return cstr;
+}
+
 //////////////////////////////////////////////////////
 //
 //         coord rotation functions
