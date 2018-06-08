@@ -83,11 +83,12 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
     // It is assumed that all subdirs have the same prefix.
     string subdirPrefix;
     for(string::size_type j = 0; j < subdirs[0].size(); ++j){
-        if( isdigit(subdirs[0][j]) == true){
+        if( isdigit(subdirs[0][j]) > 0){
             subdirPrefix = subdirs[0].substr(0, j);
             break;
         }
     }
+    if(rank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
 
     ///////////////////////////////////////////////////////////////
     //
@@ -268,29 +269,29 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
         if(rank == 0){ cout<<"starting to open files"<<endl; }
 
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(id_file_name), 
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(x_file_name), 
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(x_file_name.str().c_str()), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &x_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(y_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(y_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &y_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(z_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(z_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &z_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vx_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vx_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vy_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vy_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vz_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(a_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(a_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &a_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(rotation_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(replication_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(theta_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(theta_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(phi_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(phi_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
         
         if(rank == 0){ cout<<"done opening files"<<endl; }
@@ -487,11 +488,12 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
     // It is assumed that all subdirs have the same prefix.
     string subdirPrefix;
     for(string::size_type j = 0; j < subdirs[0].size(); ++j){
-        if( isdigit(subdirs[0][j]) == true){
+        if( isdigit(subdirs[0][j]) > 0){
             subdirPrefix = subdirs[0].substr(0, j);
             break;
         }
     }
+    if(rank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
 
     ///////////////////////////////////////////////////////////////
     //
@@ -726,29 +728,29 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
         if(rank == 0){ cout<<"starting to open files"<<endl; }
 
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(id_file_name), 
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(x_file_name), 
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(x_file_name.str().c_str()), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &x_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(y_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(y_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &y_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(z_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(z_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &z_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vx_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vx_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vy_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vy_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(vz_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(a_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(a_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &a_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(rotation_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(replication_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(theta_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(theta_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
-        MPI_File_open(MPI_COMM_WORLD, sstream_cstr(phi_file_name),
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(phi_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
 
         if(rank == 0){ cout<<"done opening files"<<endl; }
