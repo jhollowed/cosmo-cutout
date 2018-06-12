@@ -41,7 +41,7 @@ using namespace gio;
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
                vector<float> theta_bounds, vector<float> phi_bounds, int rank, int numranks);
 
-void processLC(string dir_name, string out_dir, vector<string> step_strings, 
+void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
                vector<float> halo_pos, float boxLength, int rank, int numranks);
 
 #endif

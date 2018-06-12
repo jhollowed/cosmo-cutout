@@ -8,6 +8,59 @@ using namespace std;
 //
 //////////////////////////////////////////////////////
 
+void readHaloFile(string haloFileName, vector<float> &haloPos, vector<ID_T> &haloTags){
+    // This function reads halo tags and positions from an input file, where that file is
+    // expected to be in an ascii format with one halo per row, each space-delimited row 
+    // appearing as 
+    //
+    // tag x y z
+    //
+    // into two vectors to contain the tags and positions, where the result of the constructed
+    // position vector has each of N halos contained linearly as
+    //
+    // [x_1, y_1, z_1, x_2, y_2, z_2, x_3, y_3, z_3, ..., x_N, y_N, z_N,]
+    //
+    // Params:
+    // :param haloFileName: the ascii file containing the halo data, in the format 
+    //                      described above
+    // :param haloPos: vector to hold halo positions
+    // :param haloTags: vector to hold halo tags
+    
+    // get halo tags (every 4th element)
+    {
+    ifstream haloFile(haloFileName.c_str());
+    copy(istream_iterator<ID_T>(haloFile), 
+         istream_iterator<ID_T>(), 
+         back_inserter(haloTags));
+    
+    if(haloTags.size() % 4 != 0){ 
+        throw runtime_error("Each halo position given in input file must" \ 
+                            "have a tag and three components in the space-delimited" \
+                            "form: tag x y z");
+    }
+    
+    for(int i=0; i<haloTags.size()/4; ++i){
+        haloTags[i] = haloTags[i*4];
+    }
+    haloTags.resize(haloTags.size()/4);
+    }
+    
+    // get halo positions (remove every 4th element)
+    {
+    ifstream haloFile(haloFileName.c_str());
+    copy(istream_iterator<float>(haloFile), 
+         istream_iterator<float>(), 
+         back_inserter(haloPos));
+    
+    for(int i=0; i<haloPos.size(); ++i){
+        haloPos[i] = haloPos[i+1+i/3];
+    }
+    haloPos.resize((haloPos.size()/4)*3);
+    }
+
+}
+
+
 int getLCSubdirs(string dir, vector<string> &subdirs) {
     // This function writes all of the subdirectory names present in a lightcone
     // output directory to the string vector subdirs. The assumptions are that 
@@ -255,7 +308,7 @@ void cross(const vector<float> &v1,
     // Params:
     // :param v1: some three-dimensional vector
     // :param v2: some other three-dimensional vector
-    // :param v1xv2: vector to hold the resultant 
+    // :param v1xv2: vector of size 0to hold the resultant 
     //               cross-product of vectors v1 and v2
     // :return: none
     
@@ -280,7 +333,7 @@ void normCross(const vector<float> &a,
     // Parms:
     // :param a: some three-dimensional vector
     // :param b: some other three-dimensional vector
-    // :param k: vector of size 3 to hold the resultant normalized cross-product of 
+    // :param k: vector of size 0 to hold the resultant normalized cross-product of 
     //           vectors a and b
     // :return: none
 
@@ -304,10 +357,10 @@ void rotate(const vector<float> &k_vec,
     // under the main() function header for more info.
     //
     // Params:
-    // :param k_vec: the normalized axis of rotation
+    // :param k_vec: the 3D normalized axis of rotation
     // :param B: the angle of rotation, in radians
-    // :param v_vec: a vector to be rotated
-    // :param v_rot: a vector to store the result of rotating v_vec an angle B about k_vec
+    // :param v_vec: a 3D vector to be rotated
+    // :param v_rot: a vector of size 0 to store the result of rotating v_vec an angle B about k_vec
     // :return: none
 
     int nk = k_vec.size();

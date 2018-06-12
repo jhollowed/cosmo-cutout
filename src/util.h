@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iterator>
 #include <iomanip>
 #include <string>
 #include <string.h>
@@ -20,6 +21,10 @@
 #include <vector>
 #include <omp.h>
 
+// Hacc Types
+#define POSVEL_T float
+#define ID_T int64_t
+
 using namespace std;
 
 //////////////////////////////////////////////////////
@@ -27,6 +32,8 @@ using namespace std;
 //               reading functions
 //
 //////////////////////////////////////////////////////
+
+void readHaloFile(string haloFileName, vector<float> &haloPos, vector<ID_T> &haloTags);
 
 int getLCSubdirs(string dir, vector<string> &subdirs);
 

@@ -165,7 +165,8 @@ int main( int argc, char** argv ) {
     // might not use all of these but whatever
     vector<float> theta_cut(2);
     vector<float> phi_cut(2);
-    vector<float> haloPos(3);
+    vector<float> haloPos;
+    vector<ID_T> haloTags;
     float boxLength;
 
     // check that supplied arguments are valid
@@ -176,24 +177,26 @@ int main( int argc, char** argv ) {
             (find(args.begin(), args.end(), "--phi") != args.end()));
     bool customHalo = int((find(args.begin(), args.end(), "-h") != args.end()) ||
             (find(args.begin(), args.end(), "--halo") != args.end()));
+    bool customHaloFile = int((find(args.begin(), args.end(), "-f") != args.end()) ||
+            (find(args.begin(), args.end(), "--haloFile") != args.end()));
     bool customBox = int((find(args.begin(), args.end(), "-b") != args.end()) ||
             (find(args.begin(), args.end(), "--boxLength") != args.end()));
 
     // there are two general use cases of this cutout code, as described in the 
     // docstring below the declaration of this main function. Here, exceptons are 
     // thrown to prevent confused input arguments which mix those two use cases.
-    if(customHalo^customBox){ 
-        throw invalid_argument("-h and -b options must accompany eachother");
+    if( (customHalo || customHaloFile) ^ customBox ){ 
+        throw invalid_argument("-h (or -f) and -b options must accompany eachother");
     }
-    if(customThetaBounds^customPhiBounds){
+    if( customThetaBounds ^ customPhiBounds ){
         throw invalid_argument("-t and -p options must accompany eachother");
     }
-    if(customHalo & customThetaBounds){
+    if( (customHalo & customThetaBounds) || (customHaloFile & customThetaBounds) ){
         throw invalid_argument("-t and -p options must not be used in the case " \
-                "that -h and -b arguments are passed");
+                "that -h (or -f) and -b arguments are passed");
     }
-    if(!customThetaBounds && !customPhiBounds && !customHalo && !customBox){
-        throw invalid_argument("Valid options are -h, -b, -t, and -p");
+    if( !customThetaBounds && !customPhiBounds && !customHalo && !customHaloFile && !customBox ){
+        throw invalid_argument("Valid options are -h, -f, -b, -t, and -p");
     }
 
     // search argument vector for options, update default parameters if found
@@ -213,20 +216,65 @@ int main( int argc, char** argv ) {
             phi_cut[1] = phi_center + dphi;
         }
         else if(strcmp(argv[i],"-h")==0 || strcmp(argv[i],"--halo")==0){
-            haloPos[0] = strtof(argv[++i], NULL);
-            haloPos[1] = strtof(argv[++i], NULL);
-            haloPos[2] = strtof(argv[++i], NULL);  
+            haloPos.push_back(strtof(argv[++i], NULL));
+            haloPos.push_back(strtof(argv[++i], NULL));
+            haloPos.push_back(strtof(argv[++i], NULL));  
+        }
+        else if(strcmp(argv[i],"-f")==0 || strcmp(argv[i],"--haloFile")==0){
+            string haloFileName(argv[++i]);
+            readHaloFile(haloFileName, haloPos, haloTags); 
         }
         else if (strcmp(argv[i],"-b")==0 || strcmp(argv[i],"--boxLength")==0){
             boxLength = strtof(argv[++i], NULL);
         }
     }
     
+    // if customHaloFile == true, then create an output subdirectory per halo in out_dir
+    vector<string> halo_out_dirs;
+    if(customHaloFile){
+        for(int h=0; h<haloTags.size(); ++h){
+
+            ostringstream halo_subdir;
+            halo_subdir << out_dir << "halo_" << haloTags[h];
+            
+            DIR *dir = opendir(halo_subdir.str().c_str());
+            struct dirent *d;
+            int nf = 0; 
+            
+            // if subdir already exists, make sure it's empty, because overwriting
+            // binary files isn't always clean
+            if(dir != NULL){
+                while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
+                closedir(dir);
+
+                if(nf > 2){
+                    ostringstream badDir;
+                    badDir << "Directory " << halo_subdir.str() << " is non-empty";
+                    throw runtime_error(badDir.str());
+                }
+            }
+            // Otherwise, create the subdir
+            else{
+                mkdir(halo_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
+                if(rank == 0){ cout << "Created output directory: " << halo_subdir.str() << endl; }
+            }
+            halo_out_dirs.push_back(halo_subdir.str());
+        }
+    }else if(customHalo){
+        // the processLC function which takes halo positions as an argument
+        // expects the output directorie(s) to be given as a vector
+        halo_out_dirs.push_back(out_dir);
+    }
+    
+    // print summary 
     if(rank == 0){
         if(customHalo){
-            cout << "target halo: ";
-            for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[i] << " ";}
-            cout << endl;
+            cout << haloPos.size()/3 << " target halo(s): ";
+            for(int k=0; k<haloTags.size(); ++k){
+                cout << "Halo " << haloTags[k] << ": " << endl;
+                for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[k+i] << " ";}
+                cout << endl;
+            }
             cout << "box length: " << boxLength << " Mpc";
         }else{
             cout << "theta bounds: ";
@@ -237,8 +285,8 @@ int main( int argc, char** argv ) {
     }
 
     // call overloaded processing function
-    if(customHalo){
-        processLC(input_lc_dir, out_dir, step_strings, haloPos, boxLength, rank, numranks);
+    if(customHalo || customHaloFile){
+        processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, rank, numranks);
     }else{
         processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, rank, numranks);
     }
