@@ -1,5 +1,4 @@
-
-# !! On jupiter, first run module load mvapich2-2.2b-gcc-5.3.0-o4of6w7 !!
+# !! On pheonix, first run module load mvapich2-2.2b-gcc-5.3.0-o4of6w7 !!
 
 CPP := mpicxx
 CPPFLAGS := -O3

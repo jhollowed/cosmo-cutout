@@ -268,19 +268,19 @@ int main( int argc, char** argv ) {
     
     // print summary 
     if(rank == 0){
-        if(customHalo){
-            cout << haloPos.size()/3 << " target halo(s): ";
+        if(customHalo || customHaloFile){
+            cout << endl << haloPos.size()/3 << " target halo(s): " << endl;
             for(int k=0; k<haloTags.size(); ++k){
                 cout << "Halo " << haloTags[k] << ": " << endl;
                 for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[k+i] << " ";}
                 cout << endl;
             }
-            cout << "box length: " << boxLength << " Mpc";
+            cout << "box length: " << boxLength << " Mpc" << endl;
         }else{
             cout << "theta bounds: ";
-            cout << theta_cut[0]/ARCSEC << " -> " << theta_cut[1]/ARCSEC <<" deg"<<endl;
+            cout << theta_cut[0]/ARCSEC << " -> " << theta_cut[1]/ARCSEC <<" deg"<< endl;
             cout << "phi bounds: ";
-            cout << phi_cut[0]/ARCSEC << " -> " << phi_cut[1]/ARCSEC <<" deg";
+            cout << phi_cut[0]/ARCSEC << " -> " << phi_cut[1]/ARCSEC <<" deg" << endl;
         }
     }
 

@@ -93,7 +93,7 @@ int getLCSubdirs(string dir, vector<string> &subdirs) {
 
 int getLCFile(string dir, string &file) {
     // This functions returns the header file present in a lightcone output 
-    // step subdirectory (header files are those that are unhashed (#n)). 
+    // step subdirectory (header files are those that are unhashed (#)). 
     // This function enforces that only one file header is found, implying
     // that the output of only one single lightcone step is contained in the
     // directory dir/. In short, a step-wise directory structure is assumed, 
@@ -290,7 +290,7 @@ float vecPairAngle(const vector<float> &v1,
     // :param v2: some other three-dimensional vector
     // :return: the angle between v1 and v2, in radians
    
-    // find (v1·v2), |v1|, and |v2|
+    // find (v1·v2), |v1|, and |v
     float v1dv2 = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0);
     float mag_v1 = sqrt(std::inner_product(v1.begin(), v1.end(), v1.begin(), 0.0));
     float mag_v2 = sqrt(std::inner_product(v2.begin(), v2.end(), v2.begin(), 0.0));

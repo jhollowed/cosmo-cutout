@@ -502,35 +502,44 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     }
 
     // do coordinate rotation to center each input halo at (r, 90, 0) in spherical coords...
+    // halo_pos is a vector of halo positions, each having three components
     // k is a vector of vectors (the rotation axis per target halo)
     // B is a vector (the rotation angle per target halo)
     // theta is a vector of vectors (the altitude angular bounds per target halo)
     // phi is a vector of vectors (the azimuthal angular bounds per target halo)
-
-    vector<vector<float> > k(halo_pos.size()/3);
-    vector<float> B;
-    vector<vector<float> > theta_cut(halo_pos.size()/3);
-    vector<vector<float> > phi_cut(halo_pos.size()/3);
+    
+    int numHalos = halo_pos.size()/3;
+    vector<vector<float> > k(numHalos);
+    vector<float> B(numHalos);
+    vector<vector<float> > theta_cut(numHalos);
+    vector<vector<float> > phi_cut(numHalos);
 
     for(int h=0; h<halo_pos.size(); h+=3){ 
+        
         int haloIdx = h/3;
-
-        float halo_r = (float)sqrt(halo_pos[h]*halo_pos[h] + 
-                                   halo_pos[h+1]*halo_pos[h+1] + 
-                                   halo_pos[h+2]*halo_pos[h+2]);
+        
+        // get next three values in halo_pos
+        float tmp_pos[] = {halo_pos[h], halo_pos[h+1], halo_pos[h+2]};
+        vector<float> this_halo_pos(tmp_pos, tmp_pos+3);
+        
+        // find distance magnitude (new rotated halo position)
+        float halo_r = (float)sqrt(this_halo_pos[0]*this_halo_pos[0] + 
+                                        this_halo_pos[1]*this_halo_pos[1] + 
+                                        this_halo_pos[2]*this_halo_pos[2]);
         float tmp[] = {halo_r, 0, 0};
         vector<float> rotated_pos(tmp, tmp+3);
-        if(rank == 0){ cout << "Finding axis of rotation to move (" << 
-                       halo_pos[h]<< ", " << halo_pos[h+1]<< ", " << halo_pos[h+2]<< ") to (" <<
-                       rotated_pos[h] << ", " << rotated_pos[h+1] << ", " << rotated_pos[h+2] <<
+        if(rank == 0){ cout << "\nFinding axis of rotation to move (" << 
+                       this_halo_pos[0]<< ", " << this_halo_pos[1]<< ", " << this_halo_pos[2]<< ") to (" <<
+                       rotated_pos[0] << ", " << rotated_pos[1] << ", " << rotated_pos[2] <<
                        ")" << endl; }
 
         // get angle and axis of rotation -- this only needs to be calculated once for all
         // steps, and it will be used to rotate all other position vectors in the 
         // loops below
-        normCross(halo_pos, rotated_pos, k[haloIdx]);
-        B[haloIdx] = vecPairAngle(halo_pos, rotated_pos);
-        if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "Â° about axis k = (" << 
+        normCross(this_halo_pos, rotated_pos, k[haloIdx]);
+        B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
+
+        if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "Â about axis k = (" << 
                        k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl; }
 
         // calculate theta_cut and phi_cut, in arcsec, given the specified boxLength
@@ -655,6 +664,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
         // again loop over all target halos
         for(int h=0; h<halo_pos.size(); h+=3){
+            if(rank == 0){
+                cout<< "\n---------- Working on halo "<< h <<"----------" << endl; 
+            }
             int haloIdx = h/3;
             
             // instances of buffer struct at file header for output data
