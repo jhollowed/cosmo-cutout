@@ -101,7 +101,7 @@ The `depth` parameter is the maximum desired redshift of the cutout (limited, of
 
 ### Use case 2: Nonlinear angular bounds
 
-Allow the Theta and Phi bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#2080, *y*&#2080, *z*&#2080) Mpc/h (intended to be used for making cutouts centerd on specific simulation objects, like halos):
+Allow the Theta and Phi bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#2080;, *y*&#2080;, *z*&#2080;) Mpc/h (intended to be used for making cutouts centerd on specific simulation objects, like halos):
 
 ```
 lc_cutout <input lightcone directory> <output directory> <depth> --halo <x_0> <y_0> <z_0> --boxLength <box length>
@@ -111,23 +111,23 @@ where the `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`. T
 
 We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of intererst lies on the equator at
 
-(*r*, 90&#00B0, 0&#00B0)
-where *r* = (*x*^2 + *y*^2 + *z*^2)&#00BD
+(*r*, 90&#00B0;, 0&#00B0;)
+where *r* = (*x*^2 + *y*^2 + *z*^2)&#00BD;
 
 Let's call the position vector of the halo before this rotation 
-**a** = [*x*&#2080, *y*&#2080, *z*&#2080], and after, **b** = [*x*&#1D63&#2092&#209C, *y*&#1D63&#2092&#209C, *z*&#1D63&#2092&#209C] = [*r*, 0, 0]
+**a** = [*x*&#2080;, *y*&#2080;, *z*&#2080;], and after, **b** = [*x*&#1D63;&#2092;&#209C;, *y*&#1D63;&#2092;&#209C;, *z*&#1D63;&#2092;&#209C;] = [*r*, 0, 0]
 
-We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation &#03B2, what is an analytical form for a new vector **v**&#1D63&#2092&#209C which is **v** rotated by an anlge &#03B2 about **k**?
+We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation &#03B2;, what is an analytical form for a new vector **v**&#1D63;&#2092;&#209C; which is **v** rotated by an anlge &#03B2; about **k**?
 
 First, we find **k** by taking the cross product of two vectors defining the 
 plane of rotation. The obvious choice of these two vectors are **a** and **b**, as 
 defined above;
 
-k = (**a** &#2A2F **b**) / &#2016**a** &#2A2F **b**&#2016
+k = (**a** &#2A2F; **b**) / &#2016;**a** &#2A2F; **b**&#2016;
 
-then, for any other position vector **v**, **v**&#1D63&#2092&#209C is given by
+then, for any other position vector **v**, **v**&#1D63;&#2092;&#209C; is given by
 
-**v**&#1D63&#2092&#209C = **v**cos&#03B2 + (**k** &#2A2F **v**)sin&#03B2 + **k**(**k**&#22C5**v**)(1-cos&#03B2)
+**v**&#1D63;&#2092;&#209C; = **v**cos&#03B2; + (**k** &#2A2F; **v**)sin&#03B2; + **k**(**k**&#22C5;**v**)(1-cos&#03B2;)
 
 This coordinate rotation is required because the bounding functions which define the field of view of the observer, while constant in theta-phi space, are nonlinear in cartesian space. The distortion is maximized near the poles of the spherical coordinate system, and minmized at the equator. Areas defined by constant theta-phi bounds then appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
 
