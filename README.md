@@ -92,10 +92,9 @@ lc_cutout <input lightcone directory> <output directory> <depth> --theta <&#x03B
 
 where the &#x03D5;\_center argument is the azimuthal coordinate of the center of the field of view that one wishes to cut out of the lightcone, and d&#x03D5; is the angualar distance from this center to the edge of the cutout, and likewise for the similar &#x03B8;  args. That is, the result will be a sky area that spans 
  
-```
 (&#x03B8;_center - d&#x03B8;) < &#x03B8; < (&#x03B8;_center + d&#x03B8;)
+
 (&#x03D5;_center - d&#x03D5;) < &#x03D5; < (&#x03D5;_center + &#x03D5;)
-```
 
 The expected angular units are DEGREES. The `--theta` and `--phi` flags can be replaced with `-t` and `-p`.
 
