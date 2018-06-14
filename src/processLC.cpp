@@ -61,13 +61,6 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
     //
     ///////////////////////////////////////////////////////////////
 
-    // instances of buffer structs at file header
-    Buffers_read r;
-    Buffers_write w;
-    
-    w.np_count.resize(numranks);
-    w.np_offset.resize(numranks);
-
     // find all lc sub directories for each step in step_strings
     if(rank == 0){ cout << "\nReading directory: " << dir_name << endl; }
     vector<string> subdirs;
@@ -101,6 +94,13 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
     size_t max_size = 0;
     int step;
     for (int i=0; i<step_strings.size();++i){
+        
+        // instances of buffer structs at file header
+        Buffers_read r;
+        Buffers_write w;
+        
+        w.np_count.resize(numranks);
+        w.np_offset.resize(numranks);
 
         // continue if this is the step at z=0 (lightcone volume zero)
         step =atoi(step_strings[i].c_str());
