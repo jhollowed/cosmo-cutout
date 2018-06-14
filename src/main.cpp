@@ -45,8 +45,8 @@ int main( int argc, char** argv ) {
     //
     // Define the ɵ and ϕ bounds explicitly:
     // 
-    // lc_cutout <input lightcone dir> <output dir> <max redshift> --theta <ɵ_center> <dɵ> 
-    // --phi <ϕ_center> <dϕ>
+    // lc_cutout <input lightcone dir> <output dir> <min redshift> <max redshift> 
+    // --theta <ɵ_center> <dɵ> --phi <ϕ_center> <dϕ>
     // 
     // where the ϕ_center argument is the azimuthal coordinate of the center of the 
     // field of view that one wishes to cut out of the lightcone, and dϕ is the 
@@ -65,8 +65,8 @@ int main( int argc, char** argv ) {
     // a certain width, in Mpc/h, centered on a certain cartesian positon, 
     // (x, y, z) Mpc/h (intended to be used for cutting out cluster-sized halos):
     //
-    // lc_cutout <input lightcone dir> <output dir> <max redshift> --halo <x> <y> <z> 
-    // --boxLength <box length>
+    // lc_cutout <input lightcone dir> <output dir> <min redshift> <max redshift> 
+    // --halo <x> <y> <z> --boxLength <box length>
     //
     // The --halo and --boxLength flags can be replaced with -h and -b
     //
@@ -151,13 +151,17 @@ int main( int argc, char** argv ) {
 
     // build step_strings vector by locating the step present in the lightcone
     // data directory that is nearest the redshift requested by the user
-    float maxZ = atof(argv[3]);
+    float minZ = atof(argv[3]);
+    float maxZ = atof(argv[4]);
+    int maxStep = zToStep(minZ);    
     int minStep = zToStep(maxZ);    
+    
     vector<string> step_strings;
-    getLCSteps(minStep, input_lc_dir, step_strings);
+    getLCSteps(maxStep, minStep, input_lc_dir, step_strings);
     if(rank == 0){ 
-        cout << "MINSTEP: " << minStep << endl;
-        cout << "steps to include to z=" << maxZ << ": ";
+        cout << "MAX STEP: " << maxStep << endl;
+        cout << "MIN STEP: " << minStep << endl;
+        cout << "steps to include from z= " << minZ << " to z=" << maxZ << ": ";
         for(int i=0; i<step_strings.size(); ++i){ cout << step_strings[i] << " ";}
         cout << endl;
     }
@@ -201,7 +205,7 @@ int main( int argc, char** argv ) {
 
     // search argument vector for options, update default parameters if found
     // Note to future self: strcmp() returns 0 if the input strings are equal. 
-    for(int i=4; i<argc; ++i){
+    for(int i=5; i<argc; ++i){
 
         if(strcmp(argv[i],"-t")==0 || strcmp(argv[i],"--theta")==0){
             float theta_center = strtof(argv[++i], NULL) * ARCSEC;

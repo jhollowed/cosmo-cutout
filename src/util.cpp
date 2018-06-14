@@ -145,7 +145,7 @@ int getLCFile(string dir, string &file) {
 }
 
 
-int getLCSteps(int minStep, string dir, vector<string> &step_strings){
+int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_strings){
     // This function finds all simulation steps that are present in a lightcone
     // output directory that are above some specified minimum step number. The 
     // expected directory structure is that given in Figure 8 of Creating 
@@ -160,6 +160,8 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings){
     // getLCSubdirs() function header are of course made here as well.
     // 
     // Params:
+    // :param maxStep: the maximum step of interest (corresponding to the minimum
+    //                 redshift desired to appear in the cutout)
     // :param minStep: the minimum step of interest (corresponding to the maximum
     //                 redshift desired to appear in the cutout)
     // :param dir: the path to a lightcone output directory. It is assumed that 
@@ -169,14 +171,17 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings){
     //             getLCSubdirs()
     // :param step_strings: a vector to contain steps found in the lightcone
     //                      output, as strings. The steps given are all of those 
-    //                      that are >= minStep. However, if there is no step = 
-    //                      minStep in the lc output, then accept the largest step 
-    //                      that satisfies step < minStep. This ensures that users 
-    //                      will preferntially recieve a slightly deeper cutout 
-    //                      than desired, rather than slightly shallower, if the 
+    //                      that are maxStep >= step >= minStep. However, if there 
+    //                      is no step = minStep in the lc output, then accept the 
+    //                      largest step that satisfies step < minStep. This ensures 
+    //                      that users will preferntially recieve a slightly deeper 
+    //                      cutout than desired, rather than slightly shallower, if the 
     //                      choice must be made. (e.g. if minStep=300, and the only 
     //                      nearby steps present in the output are 299 and 301, 
-    //                      299 will be the minimum step written to step_strings)
+    //                      299 will be the minimum step written to step_strings). And, 
+    //                      if no step exists that satisfies step > maxStep, then return
+    //                      the smallest step that satisfies tep < maxStep (symmetric 
+    //                      what was just described above for the higher redshift end)
     // :return: none
 
     // find all lc step subdirs
@@ -199,6 +204,10 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings){
     sort(stepsAvail.begin(), stepsAvail.end());
      
     for(int k=0; k<stepsAvail.size(); ++k){
+
+        if(stepsAvail[ stepsAvail.size() - (k+1) ] > maxStep){
+            continue;
+        }
         
         ostringstream stepStringStream;
         stepStringStream << stepsAvail[ stepsAvail.size() - (k+1) ];
@@ -209,6 +218,8 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings){
             break;
         }
     }
+
+
     return 0;
 }
 
@@ -219,7 +230,7 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings){
 //
 //////////////////////////////////////////////////////
 
-float redshift(float a) {
+float aToZ(float a) {
     // Converts scale factor to redshift.
     //
     // Params:
@@ -253,23 +264,6 @@ float zToStep(float z, int totSteps, float maxZ){
     return step;
 }
 
-char* sstream_cstr(const ostringstream &sstream){
-    // This function casts an ostringstream type to a char*. This was 
-    // implemented as a workaround for the fact that the builtin call 
-    // ostringstream.str().c_str() returns a const char*, which is 
-    // incompatible with the expected input types of certain calls of 
-    // old MPI vesions, such as MPI_File_open(), which the Makefile 
-    // for this project uses on BGQ systems (Mira/Cetus). 
-    //
-    // Prams:
-    // :param sstream: an ostringstream object
-    // :return: the contents of sstream as a char*
-
-    vector<char> v(sstream.str().length() + 1);
-    strcpy(&v[0], sstream.str().c_str());
-    char* cstr = &v[0];
-    return cstr;
-}
 
 //////////////////////////////////////////////////////
 //

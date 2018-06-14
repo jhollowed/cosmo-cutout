@@ -39,7 +39,7 @@ int getLCSubdirs(string dir, vector<string> &subdirs);
 
 int getLCFile(string dir, string &file);
 
-int getLCSteps(int minStep, string dir, vector<string> &step_strings);
+int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_strings);
 
 //////////////////////////////////////////////////////
 //
@@ -47,11 +47,9 @@ int getLCSteps(int minStep, string dir, vector<string> &step_strings);
 //
 //////////////////////////////////////////////////////
 
-float redshift(float a);
+float aToZ(float a);
 
 float zToStep(float z, int totSteps=499, float maxZ=200.0);
-
-char* sstream_cstr(const ostringstream &sstream);
 
 //////////////////////////////////////////////////////
 //

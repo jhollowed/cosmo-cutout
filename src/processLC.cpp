@@ -30,7 +30,7 @@ struct Buffers_write {
     vector<POSVEL_T> vx;
     vector<POSVEL_T> vy;
     vector<POSVEL_T> vz;
-    vector<POSVEL_T> a;
+    vector<POSVEL_T> redshift;
     vector<ID_T> id;
     vector<int> step;
     vector<int> rotation;
@@ -216,7 +216,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
         // create binary files for cutout output
         MPI_File id_file;
-        MPI_File a_file;
+        MPI_File redshift_file;
         MPI_File x_file;
         MPI_File y_file;
         MPI_File z_file;
@@ -229,7 +229,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         MPI_File phi_file;
 
         MPI_Request id_req;
-        MPI_Request a_req;
+        MPI_Request redshift_req;
         MPI_Request x_req;
         MPI_Request y_req;
         MPI_Request z_req;
@@ -242,7 +242,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         MPI_Request phi_req;
         
         ostringstream id_file_name;
-        ostringstream a_file_name;
+        ostringstream redshift_file_name;
         ostringstream x_file_name;
         ostringstream y_file_name;
         ostringstream z_file_name;
@@ -255,7 +255,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         ostringstream phi_file_name; 
 
         id_file_name << step_subdir.str() << "/id." << step << ".bin";
-        a_file_name << step_subdir.str() << "/a." << step << ".bin";
+        redshift_file_name << step_subdir.str() << "/redshift." << step << ".bin";
         x_file_name << step_subdir.str() << "/x."<< step <<".bin";
         y_file_name << step_subdir.str() << "/y."<< step <<".bin";
         z_file_name << step_subdir.str() << "/z."<< step <<".bin";
@@ -283,8 +283,8 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
         MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
-        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(a_file_name.str().c_str()),
-                MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &a_file);
+        MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(redshift_file_name.str().c_str()),
+                MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &redshift_file);
         MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
         MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
@@ -318,6 +318,9 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
                 if (theta > theta_cut[0] && theta < theta_cut[1] && 
                         phi > phi_cut[0] && phi < phi_cut[1] ) {
 
+                    // get redshift from scale factor
+                    float zz = aToZ(r.a[n]);  
+
                     // spherical corrdinate transform of positions
                     w.theta.push_back(theta);
                     w.phi.push_back(phi);
@@ -329,7 +332,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
                     w.vx.push_back(r.vx[n]);
                     w.vy.push_back(r.vy[n]);
                     w.vz.push_back(r.vz[n]);
-                    w.a.push_back(r.a[n]);
+                    w.redshift.push_back(zz);
                     w.id.push_back(r.id[n]);
                     w.rotation.push_back(r.rotation[n]);
                     w.replication.push_back(r.replication[n]);
@@ -350,7 +353,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         w.np_count.clear();
         w.np_offset.clear();
         w.np_offset[0] = 0;
-        int cutout_size = int(w.a.size());
+        int cutout_size = int(w.redshift.size());
         
         // get number of elements in each ranks portion of cutout
         MPI_Allgather(&cutout_size, 1, MPI_INT, &w.np_count[0], 1, MPI_INT, 
@@ -415,9 +418,9 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         MPI_File_iwrite(phi_file, &w.phi[0], w.phi.size(), MPI_FLOAT, &phi_req);
         MPI_Wait(&phi_req, MPI_STATUS_IGNORE);
         
-        MPI_File_seek(a_file, offset_posvel, MPI_SEEK_SET);
-        MPI_File_iwrite(a_file, &w.a[0], w.a.size(), MPI_FLOAT, &a_req);
-        MPI_Wait(&a_req, MPI_STATUS_IGNORE);
+        MPI_File_seek(redshift_file, offset_posvel, MPI_SEEK_SET);
+        MPI_File_iwrite(redshift_file, &w.redshift[0], w.redshift.size(), MPI_FLOAT, &redshift_req);
+        MPI_Wait(&redshift_req, MPI_STATUS_IGNORE);
         
         MPI_File_seek(id_file, offset_posvel, MPI_SEEK_SET);
         MPI_File_iwrite(id_file, &w.id[0], w.id.size(), MPI_FLOAT, &id_req);
@@ -440,7 +443,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         MPI_File_close(&vx_file);
         MPI_File_close(&vy_file);
         MPI_File_close(&vz_file);
-        MPI_File_close(&a_file);
+        MPI_File_close(&redshift_file);
         MPI_File_close(&theta_file);
         MPI_File_close(&phi_file);
         MPI_File_close(&rotation_file);
@@ -703,7 +706,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
             // create binary files for cutout output
             MPI_File id_file;
-            MPI_File a_file;
+            MPI_File redshift_file;
             MPI_File x_file;
             MPI_File y_file;
             MPI_File z_file;
@@ -716,7 +719,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File phi_file;
 
             MPI_Request id_req;
-            MPI_Request a_req;
+            MPI_Request redshift_req;
             MPI_Request x_req;
             MPI_Request y_req;
             MPI_Request z_req;
@@ -729,7 +732,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_Request phi_req;
             
             ostringstream id_file_name;
-            ostringstream a_file_name;
+            ostringstream redshift_file_name;
             ostringstream x_file_name;
             ostringstream y_file_name;
             ostringstream z_file_name;
@@ -742,7 +745,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             ostringstream phi_file_name; 
 
             id_file_name << step_subdir.str() << "/id." << step << ".bin";
-            a_file_name << step_subdir.str() << "/a." << step << ".bin";
+            redshift_file_name << step_subdir.str() << "/redshift." << step << ".bin";
             x_file_name << step_subdir.str() << "/x."<< step <<".bin";
             y_file_name << step_subdir.str() << "/y."<< step <<".bin";
             z_file_name << step_subdir.str() << "/z."<< step <<".bin";
@@ -770,8 +773,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(a_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &a_file);
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(redshift_file_name.str().c_str()),
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &redshift_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
@@ -813,6 +816,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // do cut and push back data for objects in cutout
                     if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
                             v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1]) {
+                    
+                        // get redshift from scale factor
+                        float zz = aToZ(r.a[n]);  
                         
                         // spherical corrdinate transform of rotated positions
                         w.theta.push_back(v_theta);
@@ -825,7 +831,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         w.vx.push_back(r.vx[n]);
                         w.vy.push_back(r.vy[n]);
                         w.vz.push_back(r.vz[n]);
-                        w.a.push_back(r.a[n]);
+                        w.redshift.push_back(zz);
                         w.id.push_back(r.id[n]);
                         w.rotation.push_back(r.rotation[n]);
                         w.replication.push_back(r.replication[n]);
@@ -846,7 +852,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             w.np_count.clear();
             w.np_offset.clear();
             w.np_offset[0] = 0;
-            int cutout_size = int(w.a.size());
+            int cutout_size = int(w.redshift.size());
             
             // get number of elements in each ranks portion of cutout
             MPI_Allgather(&cutout_size, 1, MPI_INT, &w.np_count[0], 1, MPI_INT, 
@@ -911,9 +917,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File_iwrite(phi_file, &w.phi[0], w.phi.size(), MPI_FLOAT, &phi_req);
             MPI_Wait(&phi_req, MPI_STATUS_IGNORE);
             
-            MPI_File_seek(a_file, offset_posvel, MPI_SEEK_SET);
-            MPI_File_iwrite(a_file, &w.a[0], w.a.size(), MPI_FLOAT, &a_req);
-            MPI_Wait(&a_req, MPI_STATUS_IGNORE);
+            MPI_File_seek(redshift_file, offset_posvel, MPI_SEEK_SET);
+            MPI_File_iwrite(redshift_file, &w.redshift[0], w.redshift.size(), MPI_FLOAT, &redshift_req);
+            MPI_Wait(&redshift_req, MPI_STATUS_IGNORE);
             
             MPI_File_seek(id_file, offset_posvel, MPI_SEEK_SET);
             MPI_File_iwrite(id_file, &w.id[0], w.id.size(), MPI_FLOAT, &id_req);
@@ -936,7 +942,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File_close(&vx_file);
             MPI_File_close(&vy_file);
             MPI_File_close(&vz_file);
-            MPI_File_close(&a_file);
+            MPI_File_close(&redshift_file);
             MPI_File_close(&theta_file);
             MPI_File_close(&phi_file);
             MPI_File_close(&rotation_file);
