@@ -112,10 +112,18 @@ where the `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`. T
 We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of intererst lies on the equator at
 
 (*r*, 90&#x00B0;, 0&#x00B0;)
-where *r* = (*x*^2 + *y*^2 + *z*^2)&#x00BD;
+
+where 
+
+*r* = (*x*^2 + *y*^2 + *z*^2)&#x00BD;
 
 Let's call the position vector of the halo before this rotation 
-**a** = [*x*&#x2080;, *y*&#x2080;, *z*&#x2080;], and after, **b** = [*x*&#x1D63;&#x2092;&#x209C;, *y*&#x1D63;&#x2092;&#x209C;, *z*&#x1D63;&#x2092;&#x209C;] = [*r*, 0, 0]
+
+**a** = [*x*&#x2080;, *y*&#x2080;, *z*&#x2080;], 
+
+and after,
+
+ **b** = [*x*&#x1D63;&#x2092;&#x209C;, *y*&#x1D63;&#x2092;&#x209C;, *z*&#x1D63;&#x2092;&#x209C;] = [*r*, 0, 0]
 
 We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation &#x03B2;, what is an analytical form for a new vector **v**&#x1D63;&#x2092;&#x209C; which is **v** rotated by an anlge &#x03B2; about **k**?
 
