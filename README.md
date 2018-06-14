@@ -72,9 +72,9 @@ make -f Makefile.pheonix
 
 *Notation:*
 
-Theta#x03B8 - coaltitutde coordinate
+&#x03B8 - coaltitutde coordinate
 
-Phi#x03D5 - azimuthal coordinate
+&#x03D5 - azimuthal coordinate
 
 *x*, *y*, *z* - comoving cartesian coordinates
 
@@ -87,14 +87,14 @@ Two use cases are supported:
 Define the theta and phi bounds explicitly:
   
 ```
-lc_cutout <input lightcone directory> <output directory> <depth> --theta <Theta#x03B8_center> <dTheta#x03B8> --phi <Phi#x03D5_center> <dPhi#x03D5>
+lc_cutout <input lightcone directory> <output directory> <depth> --theta <&#x03B8_center> <d&#x03B8> --phi <&#x03D5_center> <d&#x03D5>
 ```
 
-where the Phi#x03D5\_center argument is the azimuthal coordinate of the center of the field of view that one wishes to cut out of the lightcone, and dPhi#x03D5 is the angualar distance from this center to the edge of the cutout, and likewise for the similar Theta#x03B8  args. That is, the result will be a sky area that spans 
+where the &#x03D5\_center argument is the azimuthal coordinate of the center of the field of view that one wishes to cut out of the lightcone, and d&#x03D5 is the angualar distance from this center to the edge of the cutout, and likewise for the similar &#x03B8  args. That is, the result will be a sky area that spans 
  
 ```
-(Theta#x03B8_center - dTheta#x03B8) < Theta#x03B8 < (Theta#x03B8_center + dTheta#x03B8)
-(Phi#x03D5_center - dPhi#x03D5) < Phi#x03D5 < (Phi#x03D5_center + Phi#x03D5)
+(&#x03B8_center - d&#x03B8) < &#x03B8 < (&#x03B8_center + d&#x03B8)
+(&#x03D5_center - d&#x03D5) < &#x03D5 < (&#x03D5_center + &#x03D5)
 ```
 
 The expected angular units are DEGREES. The `--theta` and `--phi` flags can be replaced with `-t` and `-p`.
@@ -104,7 +104,7 @@ The `depth` parameter is the maximum desired redshift of the cutout (limited, of
 
 ### Use case 2: Nonlinear angular bounds
 
-Allow the Theta#x03B8 and Phi#x03D5 bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#x2080;, *y*&#x2080;, *z*&#x2080;) Mpc/h (intended to be used for making cutouts centerd on specific simulation objects, like halos):
+Allow the &#x03B8 and &#x03D5 bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#x2080;, *y*&#x2080;, *z*&#x2080;) Mpc/h (intended to be used for making cutouts centerd on specific simulation objects, like halos):
 
 ```
 lc_cutout <input lightcone directory> <output directory> <depth> --halo <x_0> <y_0> <z_0> --boxLength <box length>
