@@ -466,9 +466,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     //
     ///////////////////////////////////////////////////////////////
 
-    // instances of buffer struct at file header for read in data
-    Buffers_read r;
-
     // find all lc sub directories for each step in step_strings
     if(rank == 0){ cout << "\nReading directory: " << dir_name << endl; }
     vector<string> subdirs;
@@ -576,6 +573,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     size_t max_size = 0;
     int step;
     for (int i=0; i<step_strings.size();++i){
+    
+        // instances of buffer struct at file header for read in data
+        Buffers_read r;
 
         // continue if this is the step at z=0 (lightcone volume zero)
         step =atoi(step_strings[i].c_str());
