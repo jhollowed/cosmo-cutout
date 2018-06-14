@@ -102,7 +102,7 @@ The `depth` parameter is the maximum desired redshift of the cutout (limited, of
 
 ### Use case 2: Nonlinear angular bounds
 
-Allow the Theta and Phi bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#2080;, *y*&#2080;, *z*&#2080;) Mpc/h (intended to be used for making cutouts centerd on specific simulation objects, like halos):
+Allow the Theta and Phi bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#x2080;, *y*&#x2080;, *z*&#x2080;) Mpc/h (intended to be used for making cutouts centerd on specific simulation objects, like halos):
 
 ```
 lc_cutout <input lightcone directory> <output directory> <depth> --halo <x_0> <y_0> <z_0> --boxLength <box length>
