@@ -127,7 +127,7 @@ k = (**a** &#x2A2F; **b**) / &#x2016;**a** &#x2A2F; **b**&#x2016;
 
 then, for any other position vector **v**, **v**&#x1D63;&#x2092;&#x209C; is given by
 
-**v**&#x1D63;&#x2092;&#x209C; = **v**cos&#03B2; + (**k** &#x2A2F; **v**)sin&#x03B2; + **k**(**k**&#x22C5;**v**)(1-cos&#x03B2;)
+**v**&#x1D63;&#x2092;&#x209C; = **v**cos&#x03B2; + (**k** &#x2A2F; **v**)sin&#x03B2; + **k**(**k** &#x22C5; **v**)(1-cos&#x03B2;)
 
 This coordinate rotation is required because the bounding functions which define the field of view of the observer, while constant in theta-phi space, are nonlinear in cartesian space. The distortion is maximized near the poles of the spherical coordinate system, and minmized at the equator. Areas defined by constant theta-phi bounds then appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
 
