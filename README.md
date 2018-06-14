@@ -87,14 +87,14 @@ Two use cases are supported:
 Define the theta and phi bounds explicitly:
   
 ```
-lc_cutout <input lightcone directory> <output directory> <depth> --theta <&#x03B8;_center> <d&#x03B8;> --phi <&#x03D5;_center> <d&#x03D5;>
+lc_cutout <input lightcone directory> <output directory> <depth> --theta <theta_center> <d_theta> --phi <phi_center> <d_phi;>
 ```
 
-where the &#x03D5;\_center argument is the azimuthal coordinate of the center of the field of view that one wishes to cut out of the lightcone, and d&#x03D5; is the angualar distance from this center to the edge of the cutout, and likewise for the similar &#x03B8;  args. That is, the result will be a sky area that spans 
+where the &#x03D5;~center~ argument is the azimuthal coordinate of the center of the field of view that one wishes to cut out of the lightcone, and d&#x03D5; is the angualar distance from this center to the edge of the cutout, and likewise for the similar &#x03B8;  args. That is, the result will be a sky area that spans 
  
-(&#x03B8;_center - d&#x03B8;) < &#x03B8; < (&#x03B8;_center + d&#x03B8;)
+(&#x03B8;~center~ - d&#x03B8;) < &#x03B8; < (&#x03B8;~center~ + d&#x03B8;)
 
-(&#x03D5;_center - d&#x03D5;) < &#x03D5; < (&#x03D5;_center + &#x03D5;)
+(&#x03D5;~center~ - d&#x03D5;) < &#x03D5; < (&#x03D5;~center~ + &#x03D5;)
 
 The expected angular units are DEGREES. The `--theta` and `--phi` flags can be replaced with `-t` and `-p`.
 
@@ -117,7 +117,7 @@ We want to express the positions of  all of our lightcone objects in spherical c
 
 where 
 
-*r* = (*x*^2 + *y*^2 + *z*^2)&#x00BD;
+*r* = (*x*^2^ + *y*^2^ + *z*^2^)^1/2^;
 
 Let's call the position vector of the halo before this rotation 
 
@@ -125,9 +125,9 @@ Let's call the position vector of the halo before this rotation
 
 and after,
 
- **b** = [*x*&#x1D63;&#x2092;&#x209C;, *y*&#x1D63;&#x2092;&#x209C;, *z*&#x1D63;&#x2092;&#x209C;] = [*r*, 0, 0]
+ **b** = [*x*~rot~, *y*~rot~, *z*~rot~] = [*r*, 0, 0]
 
-We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation &#x03B2;, what is an analytical form for a new vector **v**&#x1D63;&#x2092;&#x209C; which is **v** rotated by an anlge &#x03B2; about **k**?
+We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation &#x03B2;, what is an analytical form for a new vector **v**~rot~ which is **v** rotated by an anlge &#x03B2; about **k**?
 
 First, we find **k** by taking the cross product of two vectors defining the 
 plane of rotation. The obvious choice of these two vectors are **a** and **b**, as 
@@ -135,9 +135,9 @@ defined above;
 
 k = (**a** &#x2A2F; **b**) / &#x2016;**a** &#x2A2F; **b**&#x2016;
 
-then, for any other position vector **v**, **v**&#x1D63;&#x2092;&#x209C; is given by
+then, for any other position vector **v**, **v**~rot~ is given by
 
-**v**&#x1D63;&#x2092;&#x209C; = **v**cos&#x03B2; + (**k** &#x2A2F; **v**)sin&#x03B2; + **k**(**k** &#x22C5; **v**)(1-cos&#x03B2;)
+**v**~rot~ = **v**cos&#x03B2; + (**k** &#x2A2F; **v**)sin&#x03B2; + **k**(**k** &#x22C5; **v**)(1-cos&#x03B2;)
 
 This coordinate rotation is required because the bounding functions which define the field of view of the observer, while constant in theta-phi space, are nonlinear in cartesian space. The distortion is maximized near the poles of the spherical coordinate system, and minmized at the equator. Areas defined by constant theta-phi bounds then appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
 
