@@ -191,7 +191,7 @@ This coordinate rotation is required because the bounding functions which define
 
 ## Caveats
 
-* Note that the Use Case 1 does not perform the coordinate rotation which is described in Use Case 2 (under the "click to expand" details). So, cutouts returned will not necessarily be square, or symmetrical, is far from the coordinate equator.
+* Note that the Use Case 1 does not perform the coordinate rotation which is described in Use Case 2 (under the "click here to expand" details). So, cutouts returned will not necessarily be square, or symmetrical, is far from the coordinate equator.
 
 * The parallelism in this application occurs *spatially*, not temporally. That is, the lightcone volume is decomposed across *MPI* ranks, which prallelizes the read in, computation, and write-out. But there is no parallelism in *redshift*-space, meaning that each lightcone "step" (portion of the lightcone volume originating from a particular simulation snapshot) are treated in serial. Further, if option `-f` is used as described under Use Case 2, then those multiple requested cutouts are also treated serially. 
 
