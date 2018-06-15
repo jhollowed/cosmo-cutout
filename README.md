@@ -96,16 +96,16 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
   * `output directory` - where to save the result of the cutout. A new subdirectory will be created at this location, of the form `lcCutoutXXX` for each step `XXX` included in the calculation  
   * `min redshift` - allows the user to begin the cutout construction at some distance away from the observer position (the origin) in redshift-space. Setting this parameter to a nonzero value is intended to be used in the case that the user is breaking up the cutout procedure across separate jobs  
   * `max redshift` - controls the depth of the cutout in redshift-space (limited, of course, by the maximum redshift of the input lightcone catalog)  
-  * `theta_center` - the &#x03B3; coordinate of the center of the desired cutout field of view  
-  * `d_theta` - the distance from &#x03B3;<sub>center</sub> to the edge of the field of view  
-  * `phi_center` the &#x03D5; coordinate of the center of the desired cutout field of view  
-  * `d_phi` - the distance from &#x03D5;<sub>center</sub> to the edge of the field of view  
+  * `theta_center` - the *&#x03B3;* coordinate of the center of the desired cutout field of view  
+  * `d_theta` - the distance from *&#x03B3;*<sub>center</sub> to the edge of the field of view  
+  * `phi_center` the *&#x03D5;* coordinate of the center of the desired cutout field of view  
+  * `d_phi` - the distance from *&#x03D5;*<sub>center</sub> to the edge of the field of view  
  
 That is, the result of the cutout will be a sky area that spans 
  
-(&#x03B8;<sub>center</sub> - d&#x03B8;) < &#x03B8; < (&#x03B8;<sub>center</sub> + d&#x03B8;)
+(*&#x03B8;*<sub>center</sub> - *d&#x03B8;*) < *&#x03B8;* < (*&#x03B8;*<sub>center</sub> + *d&#x03B8*;)
 
-(&#x03D5;<sub>center</sub> - d&#x03D5;) < &#x03D5; < (&#x03D5;<sub>center</sub> + d&#x03D5;)
+(*&#x03D5;*<sub>center</sub> - *d&#x03D5;*) < *&#x03D5;* < (*&#x03D5;*<sub>center</sub> + *d&#x03D5;*)
 
 and redshift range...
 
@@ -113,7 +113,7 @@ The expected angular units are DEGREES. The `--theta` and `--phi` flags can be r
 
 ## Use case 2: Nonlinear angular bounds
 
-Allow the &#x03B8; and &#x03D5; bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#x2080;, *y*&#x2080;, *z*&#x2080;) Mpc/h (intended to be used for making cutouts around specific simulation objects, like halos):
+Allow the *&#x03B8;* and *&#x03D5;* bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x&#x2080;*, *y&#x2080;*, *z&#x2080;*) Mpc/h (intended to be used for making cutouts around specific simulation objects, like halos):
 
 ```
 lc_cutout <input lightcone directory> <output directory> <min redshift> <max redshift> --halo <x_0> <y_0> <z_0> --boxLength <box length>
@@ -123,7 +123,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift` - See description above  
   * `x_0`, `y_0`, `z_0` - The comoving cartesian position, in Mpc/h, of the object on which to center the cutout  
-  * `box length` - the width of the fov around the object of iterest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8*, as defined above, is tan<sup>-1</sup>(*B*/2*r*), where *r* is *r* = (*x*<sub>0</sub><sup>2</sup> + *y*<sub>0</sub><sup>2</sup> + *z*<sub>0</sub><sup>2</sup>)<sup>1/2</sup>)  
+  * `box length` - the width of the fov around the object of iterest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8*, as defined above, is tan<sup>-1</sup>(*B*/2*r*), where *r* is *r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>)  
 
 The `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`.
 
@@ -159,17 +159,17 @@ We want to express the positions of  all of our lightcone objects in spherical c
 
 where 
 
-*r* = (*x*<sub>0</sub><sup>2</sup> + *y*<sub>0</sub><sup>2</sup> + *z*<sub>0</sub><sup>2</sup>)<sup>1/2</sup>
+*r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>
 
 Let's call the position vector of the halo before this rotation 
 
-**a** = [*x*&#x2080;, *y*&#x2080;, *z*&#x2080;], 
+**a** = [*x&#x2080;*, *y&#x2080;*, *z&#x2080;*], 
 
 and after,
 
  **b** = [*x*<sub>rot</sub>, *y*<sub>rot</sub>, *z*<sub>rot</sub>] = [*r*, 0, 0]
 
-We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation &#x03B2;, what is an analytical form for a new vector **v**<sub>rot</sub> which is **v** rotated by an anlge &#x03B2; about **k**?
+We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation *&#x03B2;*, what is an analytical form for a new vector **v**<sub>rot</sub> which is **v** rotated by an anlge *&#x03B2;* about **k**?
 
 First, we find **k** by taking the cross product of two vectors defining the 
 plane of rotation. The obvious choice of these two vectors are **a** and **b**, as 
@@ -179,7 +179,7 @@ k = (**a** &#x2A2F; **b**) / &#x2016;**a** &#x2A2F; **b**&#x2016;
 
 then, for any other position vector **v**, **v**<sub>rot</sub> is given by
 
-**v**<sub>rot</sub> = **v**cos&#x03B2; + (**k** &#x2A2F; **v**)sin&#x03B2; + **k**(**k** &#x22C5; **v**)(1-cos&#x03B2;)
+**v**<sub>rot</sub> = **v**cos*&#x03B2;* + (**k** &#x2A2F; **v**)sin*&#x03B2;* + **k**(**k** &#x22C5; **v**)(1-cos*&#x03B2;*)
 
 This coordinate rotation is required because the bounding functions which define the field of view of the observer, while constant in theta-phi space, are nonlinear in cartesian space. The distortion is maximized near the poles of the spherical coordinate system, and minmized at the equator. Areas defined by constant theta-phi bounds then appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
 
