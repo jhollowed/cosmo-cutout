@@ -154,7 +154,7 @@ The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLe
 <details><summary>Click here to expand details on how exactly the cutout computation is done for Use Case 2</summary>
 <p>
 
-> We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of interest (which we will from now on assume is a halo) lies on the equator at
+We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of interest (which we will from now on assume is a halo) lies on the equator at
 
 (*r*, 90&#x00B0;, 0&#x00B0;)
 
