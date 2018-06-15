@@ -103,7 +103,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
  
 That is, the result of the cutout will be a sky area that spans 
  
-(*&#x03B8;*<sub>center</sub> - *d&#x03B8;*) < *&#x03B8;* < (*&#x03B8;*<sub>center</sub> + *d&#x03B8*;)
+(*&#x03B8;*<sub>center</sub> - *d&#x03B8;*) < *&#x03B8;* < (*&#x03B8;*<sub>center</sub> + *d&#x03B8;*)
 
 (*&#x03D5;*<sub>center</sub> - *d&#x03D5;*) < *&#x03D5;* < (*&#x03D5;*<sub>center</sub> + *d&#x03D5;*)
 
