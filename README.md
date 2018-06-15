@@ -191,18 +191,22 @@ This coordinate rotation is required because the bounding functions which define
 
 ## Caveats
 
-* Note that the Use Case 1 does not perform the coordinate rotation which is described in Use Case 2 (under the "click here to expand" details). So, cutouts returned will not necessarily be square, or symmetrical, is far from the coordinate equator.
+* Note that the Use Case 1 does not perform the coordinate rotation which is described in Use Case 2 (under the "click here to expand" details). So, cutouts returned will not necessarily be square, or symmetrical, if far from the coordinate equator.
 
-* The parallelism in this application occurs *spatially*, not temporally. That is, the lightcone volume is decomposed across *MPI* ranks, which prallelizes the read in, computation, and write-out. But there is no parallelism in *redshift*-space, meaning that each lightcone "step" (portion of the lightcone volume originating from a particular simulation snapshot) are treated in serial. Further, if option `-f` is used as described under Use Case 2, then those multiple requested cutouts are also treated serially. 
+* The parallelism in this application occurs *spatially*, not temporally. That is, the lightcone *volume* is decomposed across MPI ranks, which prallelizes the read in, computation, and write-out. But there is no parallelism in *redshift*-space, meaning that each lightcone "step" (portion of the lightcone volume originating from a particular simulation snapshot) are treated in serial. Further, if option `-f` is used as described under Use Case 2, then those multiple requested cutouts are also treated serially. 
 
-* The requested `min redshift` and `max redshift` are converted to a simulation step number assuming a simulation run that included 500 total time steps, and began at a redshift of 200. At the moment, there is no way for the user to easily change this, other than modifying the calls to `getLCSteps()` in `src/main.cpp` and rebuilding.
+* The requested `min redshift` and `max redshift` are converted to a simulation step number assuming a simulation run that included 500 total time steps, and began at a redshift of 200. At the moment, there is no way for the user to easily change this, other than modifying the calls to `getLCSteps()` in `src/main.cpp` and rebuilding (the default values and parameter names controlling this info can be seen in the `getLCSteps()` function declaration in `src/util.h`).
 
 
 #  Authors
 
-wip
+Joe Hollowed
+
+Argonne National Laboratory, Cosmological Physics and Advanced COmputing Group (CPAC), 2018
+
+jphollowed@gmail.com
 
 ## Acknowledgments
 
-wip
+This code is based on earlier template code written by CPAC's Steve Rangel. I also recieved very helpful development contribution from Patricia Larsen at CPAC. Thanks friends :)
 
