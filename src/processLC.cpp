@@ -559,7 +559,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             cout << phi_cut[haloIdx][0]/ARCSEC << "° -> " << phi_cut[haloIdx][1]/ARCSEC <<"°" << endl;
             cout << "theta-phi bounds result in box width of " << 
                     tan(dtheta) * halo_r * 2 << 
-                    " Mpc at distance to halo of " << halo_r << endl << 
+                    " Mpc/h at distance to halo of " << halo_r << " Mpc/h" << endl << 
                     "        " << "= " << dtheta*2*180.0/PI << "°x" << dphi*2*180.0/PI << 
                     "° field of view" << endl;
         }
@@ -586,8 +586,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
         // find header file
         if(rank == 0){
-            cout << "\n==================================================================" << endl;
-            cout << "============ Working on step "<< step_strings[i] <<"============" << endl; 
+            cout << "\n=================================================" << endl;
+            cout << "============== Working on step "<< step_strings[i] <<" ==============\n" << endl; 
         }
         string file_name;
         ostringstream file_name_stream;
