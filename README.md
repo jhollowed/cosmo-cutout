@@ -151,7 +151,7 @@ where the object tags are expected to be of type `int64_t` (satisfied by HACC pa
 The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `--b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
 
 
-<details><summary>Click here to expand details on how exactly the cutout computation is done for Use Case 2</summary>
+<details><summary>** *Click here to expand details on how exactly the cutout computation is done for Use Case 2* **</summary>
 <p>
 
 We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of interest (which we will from now on assume is a halo) lies on the equator at
