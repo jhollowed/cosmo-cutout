@@ -239,7 +239,7 @@ int main( int argc, char** argv ) {
         for(int h=0; h<haloTags.size(); ++h){
 
             ostringstream halo_subdir;
-            halo_subdir << out_dir << "halo_" << haloTags[h];
+            halo_subdir << out_dir << "halo_" << haloTags[h] << "/";
             
             DIR *dir = opendir(halo_subdir.str().c_str());
             struct dirent *d;
