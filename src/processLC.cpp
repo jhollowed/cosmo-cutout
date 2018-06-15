@@ -539,7 +539,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         normCross(this_halo_pos, rotated_pos, k[haloIdx]);
         B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
 
-        if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "Â about axis k = (" << 
+        if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "° about axis k = (" << 
                        k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl; }
 
         // calculate theta_cut and phi_cut, in arcsec, given the specified boxLength
@@ -554,14 +554,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         phi_cut[haloIdx].push_back( (0 + dphi) * 180.0/PI * ARCSEC );
         if(rank == 0){ 
             cout << "theta bounds set to: ";
-            cout << theta_cut[haloIdx][0]/ARCSEC << "Â° -> " << theta_cut[haloIdx][1]/ARCSEC <<"Â°"<< endl;
+            cout << theta_cut[haloIdx][0]/ARCSEC << "° -> " << theta_cut[haloIdx][1]/ARCSEC <<"°"<< endl;
             cout << "phi bounds set to: ";
-            cout << phi_cut[haloIdx][0]/ARCSEC << "Â° -> " << phi_cut[haloIdx][1]/ARCSEC <<"Â°" << endl;
+            cout << phi_cut[haloIdx][0]/ARCSEC << "° -> " << phi_cut[haloIdx][1]/ARCSEC <<"°" << endl;
             cout << "theta-phi bounds result in box width of " << 
                     tan(dtheta) * halo_r * 2 << 
                     " Mpc at distance to halo of " << halo_r << endl << 
-                    "        " << "= " << dtheta*2*180.0/PI << "Â°x" << dphi*2*180.0/PI << 
-                    "Â° field of view" << endl;
+                    "        " << "= " << dtheta*2*180.0/PI << "°x" << dphi*2*180.0/PI << 
+                    "° field of view" << endl;
         }
     }
 
@@ -586,7 +586,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
         // find header file
         if(rank == 0){
-            cout<< "\n---------- Working on step "<< step_strings[i] <<"----------" << endl; 
+            cout << "\n==================================================================" << endl;
+            cout << "============ Working on step "<< step_strings[i] <<"============" << endl; 
         }
         string file_name;
         ostringstream file_name_stream;
@@ -668,7 +669,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // again loop over all target halos
         for(int h=0; h<halo_pos.size(); h+=3){
             if(rank == 0){
-                cout<< "\n---------- Working on halo "<< h <<"----------" << endl; 
+                cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
             }
             int haloIdx = h/3;
             
