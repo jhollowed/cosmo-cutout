@@ -97,8 +97,8 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
   * `output directory` - where to save the result of the cutout. A new subdirectory will be created at this location, of the form `lcCutoutXXX` for each step `XXX` included in the calculation  
   * `min redshift` - allows the user to begin the cutout construction at some distance away from the observer position (the origin) in redshift-space. Setting this parameter to a nonzero value is intended to be used in the case that the user is breaking up the cutout procedure across separate jobs  
   * `max redshift` - controls the depth of the cutout in redshift-space (limited, of course, by the maximum redshift of the input lightcone catalog)  
-  * `theta_center` - the *&#x03B3;* coordinate of the center of the desired cutout field of view  
-  * `d_theta` - the distance from *&#x03B3;*<sub>center</sub> to the edge of the field of view  
+  * `theta_center` - the *&#x03B8;* coordinate of the center of the desired cutout field of view  
+  * `d_theta` - the distance from *&#x03B8;*<sub>center</sub> to the edge of the field of view  
   * `phi_center` the *&#x03D5;* coordinate of the center of the desired cutout field of view  
   * `d_phi` - the distance from *&#x03D5;*<sub>center</sub> to the edge of the field of view  
  
