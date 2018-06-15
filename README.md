@@ -1,4 +1,4 @@
-<span style="color:blue"># cosmo-cutout</span>
+# cosmo-cutout
 
 Modeling synthetic observations of the sky is an important task in modern cosmology, with the general hierarchy of necessary data products being as follows:
 
