@@ -68,13 +68,13 @@ on Pheonix:
 make -f Makefile.pheonix
 ```
 
-## Running the cutout
+# Running the cutout
 
-*Notation:*
+###*Notation:*
 
-&#x03B8; - coaltitutde coordinate
+*&#x03B8;* - coaltitutde coordinate
 
-&#x03D5; - azimuthal coordinate
+*&#x03D5;* - azimuthal coordinate
 
 *x*, *y*, *z* - comoving cartesian coordinates
 
@@ -82,42 +82,84 @@ make -f Makefile.pheonix
 
 Two use cases are supported: 
 
-### Use case 1: Constant angular bounds
+## Use case 1: Constant angular bounds
 
 Define the theta and phi bounds explicitly:
   
 ```
-lc_cutout <input lightcone directory> <output directory> <depth> --theta <theta_center> <d_theta> --phi <phi_center> <d_phi;>
+lc_cutout <input lightcone directory> <output directory> <min redshift> <max redshift> --theta <theta_center> <d_theta> --phi <phi_center> <d_phi;>
 ```
 
-where the &#x03D5;<sub>center</sub> argument is the azimuthal coordinate of the center of the field of view that one wishes to cut out of the lightcone, and d&#x03D5; is the angualar distance from this center to the edge of the cutout, and likewise for the similar &#x03B8;  args. That is, the result will be a sky area that spans 
+#### Arguments:
+
+  ---`input lightcone direcoty` - the location of the top-level directory of a simulation lightcone. The directory structure is expected to match that as described in section 4.5 (Figure 7) of [Creating Lightcones in HACC](http://www.joehollowed.com/lightcone_notes.html), which contains step-wise subdirectories
+  --- `output directory` - where to save the result of the cutout. A new subdirectory will be created at this location, of the form `lcCutoutXXX` for each step `XXX` included in the calculation
+  --- `min redshift` - allows the user to begin the cutout construction at some distance away from the observer position (the origin) in redshift-space. Setting this parameter to a nonzero value is intended to be used in the case that the user is breaking up the cutout procedure across separate jobs
+  --- `max redshift` - controls the depth of the cutout in reshift-space (limited, of course, by the maximum redshift of the input lightcone catalog)
+  --- `theta_center` - the &#x03B3; coordinate of the center of the desired cutout field of view
+  --- `d_theta` - the distance from &#x03B3;<sub>center</sub> to the edge of the field of view
+  --- `phi_center` the &#x03D5; coordinate of the center of the desired cutout field of view
+  --- `d_phi` - the distance from &#x03D5;<sub>center</sub> to the edge of the field of view
+ 
+That is, the result of the cutout will be a sky area that spans 
  
 (&#x03B8;<sub>center</sub> - d&#x03B8;) < &#x03B8; < (&#x03B8;<sub>center</sub> + d&#x03B8;)
 
-(&#x03D5;<sub>center</sub> - d&#x03D5;) < &#x03D5; < (&#x03D5;<sub>center</sub> + &#x03D5;)
+(&#x03D5;<sub>center</sub> - d&#x03D5;) < &#x03D5; < (&#x03D5;<sub>center</sub> + d&#x03D5;)
+
+and redshift range...
 
 The expected angular units are DEGREES. The `--theta` and `--phi` flags can be replaced with `-t` and `-p`.
 
-The `depth` parameter is the maximum desired redshift of the cutout (limited, of course, by the maximu redshift of the input lightcone catalog).
+## Use case 2: Nonlinear angular bounds
 
-
-### Use case 2: Nonlinear angular bounds
-
-Allow the &#x03B8; and &#x03D5; bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#x2080;, *y*&#x2080;, *z*&#x2080;) Mpc/h (intended to be used for making cutouts centerd on specific simulation objects, like halos):
+Allow the &#x03B8; and &#x03D5; bounds to be computed interanally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain cartesian positon, (*x*&#x2080;, *y*&#x2080;, *z*&#x2080;) Mpc/h (intended to be used for making cutouts around specific simulation objects, like halos):
 
 ```
-lc_cutout <input lightcone directory> <output directory> <depth> --halo <x_0> <y_0> <z_0> --boxLength <box length>
+lc_cutout <input lightcone directory> <output directory> <min redshift> <max redshift> --halo <x_0> <y_0> <z_0> --boxLength <box length>
 ```
 
-where the `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`. Those options give the position of the object to center the cutout on, and the one-dimensional size of the field of view in Mpc/h, tangent to the line of sight, at the distance of the object of interest, respectively.
+#### Arguments:
 
-We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of intererst lies on the equator at
+  ---`input lightcone direcoty`, `output directory`, `min redshift`, `max redshift` - See description above
+  ---`x_0`, `y_0`, `z_0` - The comoving cartesian position, in Mpc/h, of the object on which to center the cutout
+  --- `box length` - the width of the fov around the object of iterest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8*, as defined above, is tan<sup>-1</sup>(*B*/2*r*), where *r* is *r* = (*x*<sub>0</sub><sup>2</sup> + *y*<sub>0</sub><sup>2</sup> + *z*<sub>0</sub><sup>2</sup>)<sup>1/2</sup>)
+
+The `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`.
+
+#### Multiple objects of interest
+
+If one has many objects of interest around which they would like lightcone cutouts, then it would be inefficient to call the above command wiht the `-h` option each time, since each one of those runs would be using resources to re-read the same input lightcone data (which has the potential to be very large). To address this, the program can be run in the following manner:
+
+```
+lc_cutout <input lightcone directory> <output directory> <min redshift> <max redshift> --haloFile <input object file> --boxLength <box length>
+```
+
+#### Arguments:
+
+  ---`input lightcone direcoty`, `output directory`, `min redshift`, `max redshift`, `box length` - See description above.
+  ---`input object file` - A plain text file containing one line per object of interest, which includes an identifying object tag, and three cartesian comoving positions, as such:
+  
+```
+123456789 50 55 20
+987654321 10 0 30
+...
+```
+where the object tags are expected to be of type `int64_t` (satisfied by HACC particle id's and halo tags). In this example, the first object has a tag of `123456789`, and position *x*=`50`, *y*=`55`, *z*=`20`.
+
+The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `--b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
+
+
+<details><summary>Click here to expand details on how exactly the cutout computation is done for Use Case 2</summary>
+<p>
+
+We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of intererst (which we will from now on assume is a halo) lies on the equator at
 
 (*r*, 90&#x00B0;, 0&#x00B0;)
 
 where 
 
-*r* = (*x*<sup>2</sup> + *y*<sup>2</sup> + *z*<sup>2</sup>)<sup>1/2</sup>;
+*r* = (*x*<sub>0</sub><sup>2</sup> + *y*<sub>0</sub><sup>2</sup> + *z*<sub>0</sub><sup>2</sup>)<sup>1/2</sup>
 
 Let's call the position vector of the halo before this rotation 
 
@@ -143,6 +185,9 @@ This coordinate rotation is required because the bounding functions which define
 
 * At the moment, FFT restrictions of flat-sky lensing code require that the cutout is square
 * The cutouts returned will not actually have all side lengths of `boxLength` if we don't do this rotation, which the user explicitly requested
+</p>
+
+# Caveats
 
 Note that the first use case describe does not perform the coordinate rotation which is described in the second. So, cutouts returned will not necessarily be square, or symmetrical.
 

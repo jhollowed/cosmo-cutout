@@ -49,7 +49,7 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
 
 float aToZ(float a);
 
-float zToStep(float z, int totSteps=499, float maxZ=200.0);
+float zToStep(float z, int totSteps=500, float maxZ=200.0);
 
 //////////////////////////////////////////////////////
 //
