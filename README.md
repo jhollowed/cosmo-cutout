@@ -70,7 +70,7 @@ make -f Makefile.pheonix
 
 # Running the cutout
 
-###*Notation:*
+### *Notation:*
 
 *&#x03B8;* - coaltitutde coordinate
 
