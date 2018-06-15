@@ -20,51 +20,52 @@ For help on running at ALCF, there are pages dedicated to compiling and linking 
 
 If running at ALCF, first clone the repo
 
-```
+```bash
 git clone https://github.com/jhollowed/cosmo-cutout.git
 ```
 
 and make the following environment changes...
-First edit your `~/.soft`
+
+First edit your `~/.soft` to include these lines
 
 on Mira/Cetus:
-```
+```bash
 +mpiwrapper-xl.legacy.ndebug
 @default
 ```
 
 on Cooley:
-```
+```bash
 +mvapich2
 @default
 ```
 
 and run 
 
-```
+```bash
 resoft
 ```
 
 Or, if running on Pheonix (formerly Jupiter), run
 
-```
+```bash
 module load mvapich2-2.2b-gcc-5.3.0-o4of6w7
 ```
 
 Next, compile the source code
 
 on Mira/Cetus:
-```
+```bash
 make -f Makefile.mira
 ```
 
 on Cooley:
-```
+```bash
 make -f Makefile.cooley
 ```
 
 on Pheonix:
-```
+```bash
 make -f Makefile.pheonix
 ```
 
