@@ -142,11 +142,12 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
   * `input object file` - A plain text file containing one line per object of interest, which includes an identifying object tag, and three Cartesian comoving positions, as such:  
   
 ```
-123456789 50 55 20
-987654321 10 0 30
+123456789 50.0 55.0 20.0
+987654321 10.0 0.0 30.0
+192837465 110.0 35.0 20.0
 ...
 ```
-where the object tags are expected to be of type `int64_t` (satisfied by HACC particle id's and halo tags). In this example, the first object has a tag of `123456789`, and position *x*=`50`, *y*=`55`, *z*=`20`.
+In this example, the first object has a tag of `123456789`, and position *x*=`50`, *y*=`55`, *z*=`20`.
 
 The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `--b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
 

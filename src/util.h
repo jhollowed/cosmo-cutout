@@ -33,7 +33,7 @@ using namespace std;
 //
 //////////////////////////////////////////////////////
 
-void readHaloFile(string haloFileName, vector<float> &haloPos, vector<ID_T> &haloTags);
+void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloTags);
 
 int getLCSubdirs(string dir, vector<string> &subdirs);
 

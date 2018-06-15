@@ -666,7 +666,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         //
         ///////////////////////////////////////////////////////////////
 
-        // again loop over all target halos
+        // loop over all target halos
+        //
         for(int h=0; h<halo_pos.size(); h+=3){
             if(rank == 0){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 

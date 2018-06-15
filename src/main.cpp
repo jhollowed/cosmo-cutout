@@ -170,7 +170,7 @@ int main( int argc, char** argv ) {
     vector<float> theta_cut(2);
     vector<float> phi_cut(2);
     vector<float> haloPos;
-    vector<ID_T> haloTags;
+    vector<string> haloTags;
     float boxLength;
 
     // check that supplied arguments are valid
