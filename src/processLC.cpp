@@ -542,12 +542,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "° about axis k = (" << 
                        k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl; }
 
-        // calculate theta_cut and phi_cut, in arcsec, given the specified boxLength
+        // calculate dtheta and dphi in radians
         float halfBoxLength = boxLength / 2.0;
         float dtheta = atan(halfBoxLength / halo_r);
         float dphi = dtheta;
 
-        // calculate theta-phi bounds of cutout under coordinate rotation
+        // calculate theta_cut and phi_cut, in arcsec, given the specified boxLength
         theta_cut[haloIdx].push_back( (PI/2 - dtheta) * 180.0/PI * ARCSEC );
         theta_cut[haloIdx].push_back( (PI/2 + dtheta) * 180.0/PI * ARCSEC );
         phi_cut[haloIdx].push_back( (0 - dphi) * 180.0/PI * ARCSEC );

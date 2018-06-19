@@ -342,7 +342,13 @@ void normCross(const vector<float> &a,
     cross(a, b, axb);
     float mag_axb = sqrt(std::inner_product(axb.begin(), axb.end(), axb.begin(), 0.0));
 
-    for(int i=0; i<na; ++i){ k.push_back( axb[i] / mag_axb ); }
+    for(int i=0; i<na; ++i){
+        if(mag_axb == 0){ 
+            k.push_back(0);
+        }else{
+            k.push_back( axb[i] / mag_axb );
+        }
+    }
 }
 
 
