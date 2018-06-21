@@ -246,17 +246,10 @@ int main( int argc, char** argv ) {
             struct dirent *d;
             int nf = 0; 
             
-            // if subdir already exists, make sure it's empty, because overwriting
-            // binary files isn't always clean
+            // if subdir already exists, make sure it's valid
             if(dir != NULL){
                 while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
                 closedir(dir);
-
-                if(nf > 2){
-                    ostringstream badDir;
-                    badDir << "Directory " << halo_subdir.str() << " is non-empty";
-                    throw runtime_error(badDir.str());
-                }
             }
             // Otherwise, create the subdir
             else{

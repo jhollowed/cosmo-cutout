@@ -210,10 +210,14 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
     // identify the lowest step to push to step_strings (see remarks at 
     // function header)
     sort(stepsAvail.begin(), stepsAvail.end());
+    int hitMaxStep = 0;
      
     for(int k=0; k<stepsAvail.size(); ++k){
 
-        if(stepsAvail[ stepsAvail.size() - (k+1) ] > maxStep){
+        if(hitMaxStep==0){
+            if(stepsAvail[ stepsAvail.size() - (k+1) ] < maxStep){
+                hitMaxStep = 1;
+            }
             continue;
         }
         
