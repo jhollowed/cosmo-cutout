@@ -171,7 +171,7 @@ int main( int argc, char** argv ) {
     vector<float> theta_cut(2);
     vector<float> phi_cut(2);
     vector<float> haloPos;
-    vector<string> haloTags;
+    vector<string> haloIds;
     float boxLength;
 
     // check that supplied arguments are valid
@@ -227,7 +227,7 @@ int main( int argc, char** argv ) {
         }
         else if(strcmp(argv[i],"-f")==0 || strcmp(argv[i],"--haloFile")==0){
             string haloFileName(argv[++i]);
-            readHaloFile(haloFileName, haloPos, haloTags); 
+            readHaloFile(haloFileName, haloPos, haloIds);
         }
         else if (strcmp(argv[i],"-b")==0 || strcmp(argv[i],"--boxLength")==0){
             boxLength = strtof(argv[++i], NULL);
@@ -237,10 +237,10 @@ int main( int argc, char** argv ) {
     // if customHaloFile == true, then create an output subdirectory per halo in out_dir
     vector<string> halo_out_dirs;
     if(customHaloFile){
-        for(int h=0; h<haloTags.size(); ++h){
+        for(int h=0; h<haloIds.size(); ++h){
 
             ostringstream halo_subdir;
-            halo_subdir << out_dir << "halo_" << haloTags[h] << "/";
+            halo_subdir << out_dir << "halo_" << haloIds[h] << "/";
             
             DIR *dir = opendir(halo_subdir.str().c_str());
             struct dirent *d;
@@ -275,8 +275,8 @@ int main( int argc, char** argv ) {
     if(rank == 0){
         if(customHalo || customHaloFile){
             cout << endl << haloPos.size()/3 << " target halo(s): " << endl;
-            for(int k=0; k<haloTags.size(); ++k){
-                cout << "Halo " << haloTags[k] << ": " << endl;
+            for(int k=0; k<haloIds.size(); ++k){
+                cout << "Halo " << haloIds[k] << ": " << endl;
                 for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[k+i] << " ";}
                 cout << endl;
             }

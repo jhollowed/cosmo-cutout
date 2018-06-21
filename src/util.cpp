@@ -8,44 +8,49 @@ using namespace std;
 //
 //////////////////////////////////////////////////////
 
-void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloTags){
-    // This function reads halo tags and positions from an input text file, where that file 
-    // is expected to have one halo per row, each space-delimited row appearing as 
+void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloIds){
+    // This function reads halo identifiers and positions from an input text file, where 
+    // that file is expected to have one halo per row, each space-delimited row appearing as 
     //
-    // tag1 x1 y1 z1
-    // tag1 x2 y2 z2
-    // tag1 x3 y3 z3 
+    // id1 x1 y1 z1
+    // id1 x2 y2 z2
+    // id1 x3 y3 z3 
     // ...
     //
-    // and parses them into two vectors to contain the tags and positions, as such:
+    // and parses them into two vectors to contain the ids and positions, as such:
     //
-    // vector  haloTags: {tag1, tag2, tag3,...}
+    // vector  haloIds: {id1, id2, id3,...}
     // vector haloPos: {x1, y1, z1, x2, y2, z2, x3, y3, z3,...}
+    //
+    // The positions are expected to be able to be cast to floats
+    // The ids will be maintained as strings, and can contain meta data
+    // other than just the halo fof tag, separated by any non-whitespace 
+    // character
     //
     // Params:
     // :param haloFileName: the ascii file containing the halo data, in the format 
     //                      described above
     // :param haloPos: float vector to hold halo positions
-    // :param haloTags: string vector to hold halo tags
+    // :param haloIds: string vector to hold halo ids
     
     // get halo positions (remove every 4th element)
     {
+    vector<string> haloPos_strs;
     ifstream haloFile(haloFileName.c_str());
-    copy(istream_iterator<float>(haloFile), 
-         istream_iterator<float>(), 
-         back_inserter(haloPos));
+    copy(istream_iterator<string>(haloFile), 
+         istream_iterator<string>(), 
+         back_inserter(haloPos_strs));
    
     // ensure input file is as expected, more or less 
-    if(haloPos.size() % 4 != 0){ 
-        throw runtime_error("Each halo position given in input file must" \ 
-                            "have a tag and three components in the space-delimited" \
-                            "form: tag x y z");
+    if(haloPos_strs.size() % 4 != 0){ 
+        throw runtime_error("Each halo position given in input file must " \ 
+                            "have a tag and three components in the space-delimited " \
+                            "form: tag x y z ");
     }
     
-    for(int i=0; i<haloPos.size(); ++i){
-        haloPos[i] = haloPos[i+1+i/3];
+    for(int i=0; i<(haloPos_strs.size()/4)*3; ++i){
+        haloPos.push_back( strtof(haloPos_strs[i+1+i/3].c_str(), 0) );
     }
-    haloPos.resize((haloPos.size()/4)*3);
     }
     
     // get halo tags (every 4th element)
@@ -53,12 +58,12 @@ void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &h
     ifstream haloFile(haloFileName.c_str());
     copy(istream_iterator<string>(haloFile), 
          istream_iterator<string>(), 
-         back_inserter(haloTags));
+         back_inserter(haloIds));
       
-    for(int i=0; i<haloTags.size()/4; ++i){
-        haloTags[i] = haloTags[i*4];
+    for(int i=0; i<haloIds.size()/4; ++i){
+        haloIds[i] = haloIds[i*4];
     }
-    haloTags.resize(haloTags.size()/4);
+    haloIds.resize(haloIds.size()/4);
     }
     
 }

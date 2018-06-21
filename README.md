@@ -139,7 +139,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 #### Arguments:
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift`, `box length` - See description above.  
-  * `input object file` - A plain text file containing one line per object of interest, which includes an identifying object tag, and three Cartesian comoving positions, as such:  
+  * `input object file` - A plain text file containing one line per object of interest, which includes an object identifier, and three Cartesian comoving positions, as such:  
   
 ```
 123456789 50.0 55.0 20.0
@@ -147,9 +147,9 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 192837465 110.0 35.0 20.0
 ...
 ```
-In this example, the first object has a tag of `123456789`, and position *x*=`50`, *y*=`55`, *z*=`20`.
+In this example, the first object has an id of `123456789`, and position *x*=`50`, *y*=`55`, *z*=`20`. The positions must be in such a form that they can be parsed as `floats`. The identifiers can be anything, and are parsed as strings (in this way, they can be used for storing other meta data, like redshifts and masses). Under this usage, a new subdirectory will be created per object as listed in the `input object file` under `output directory`, of the form `halo_123456789`, for example. It is then under that directory that simulation step-wise directories will be created (as in the description of the `output directory` argument).
 
-The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `--b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
+The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `-b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
 
 
 <details><summary>Click here to expand details on how exactly the cutout computation is done for Use Case 2</summary>
