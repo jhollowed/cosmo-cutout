@@ -367,13 +367,18 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         
         // print out offset vector for verification
         if(rank == 0){
-            cout << "rank object counts: [";
-            for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
-            cout << "]" << endl;
-            cout << "rank offsets: [";
-            for(int m=0; m < numranks; ++m){ cout << w.np_offset[m] << ","; }
-            cout << "]" << endl;
-            cout << "Writing files..." << endl;
+            if(numranks < 20){
+                cout << "rank object counts: [";
+                for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
+                cout << "]" << endl;
+                cout << "rank offsets: [";
+                for(int m=0; m < numranks; ++m){ cout << w.np_offset[m] << ","; }
+                cout << "]" << endl;
+            } else {
+               int numEmpty = count(w.np_count.begin(), w.np_count.end(), 0);
+               cout << numranks - numEmpty << " of " << numranks << 
+               " ranks found members within cutout field of view" << endl;
+            }
         }
 
         MPI_Offset offset_posvel = sizeof(POSVEL_T) * w.np_offset[rank];
@@ -510,8 +515,15 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     // phi is a vector of vectors (the azimuthal angular bounds per target halo)
     
     int numHalos = halo_pos.size()/3;
+    
+    // rotation axis k and angle B per halo
     vector<vector<float> > k(numHalos);
     vector<float> B(numHalos);
+
+    // cross-product matrix K and rotation matrix R per halo
+    vector<vector<vector<float> > > K(numHalos);
+    vector<vector<vector<float> > > R(numHalos);
+
     vector<vector<float> > theta_cut(numHalos);
     vector<vector<float> > phi_cut(numHalos);
 
@@ -534,15 +546,28 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                        rotated_pos[0] << ", " << rotated_pos[1] << ", " << rotated_pos[2] <<
                        ")" << endl; }
 
-        // get angle and axis of rotation -- this only needs to be calculated once for all
-        // steps, and it will be used to rotate all other position vectors in the 
-        // loops below
+        // get angle and axis of rotation
         normCross(this_halo_pos, rotated_pos, k[haloIdx]);
         B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
 
         if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "° about axis k = (" << 
-                       k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl; }
+                       k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl;
+        }
+        
+        // get rotation matrix R -- this only needs to be calculated once for all
+        // steps, and it will be used to rotate all other position vectors in the 
+        // loops below
+        cross_prod_matrix(k[haloIdx], K[haloIdx]);
+        rotation_matrix(rank, K[haloIdx], B[haloIdx], R[haloIdx]);
 
+        if(rank == 0){ cout << "Rotation Matrix is " << endl << 
+                       "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
+                               R[haloIdx][0][2] << "}" << endl <<
+                       "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
+                               R[haloIdx][1][2] << "}" << endl <<
+                       "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
+                               R[haloIdx][2][2] << "}" << endl;
+        }
 
         // calculate dtheta and dphi in radians
         float halfBoxLength = boxLength / 2.0;
@@ -809,9 +834,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     float tmp[] = {r.x[n], r.y[n], r.z[n]};
                     vector<float> v(tmp, tmp+3);
                     vector<float> v_rot;
-                    rotate(k[haloIdx], B[haloIdx], v, v_rot);
+                    v_rot = matVecMul(R[haloIdx], v); 
 
-                    // spherical coordinate rotation
+                    // spherical coordinate transformation
                     float d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
                                                v_rot[2]*v_rot[2]);
                     float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
@@ -869,12 +894,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
            
             // print out offset vector for verification
             if(rank == 0){
-                cout << "rank object counts: [";
-                for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
-                cout << "]" << endl;
-                cout << "rank offsets: [";
-                for(int m=0; m < numranks; ++m){ cout << w.np_offset[m] << ","; }
-                cout << "]" << endl;
+                if(numranks < 20){
+                    cout << "rank object counts: [";
+                    for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
+                    cout << "]" << endl;
+                    cout << "rank offsets: [";
+                    for(int m=0; m < numranks; ++m){ cout << w.np_offset[m] << ","; }
+                    cout << "]" << endl;
+                } else {
+                   int numEmpty = count(w.np_count.begin(), w.np_count.end(), 0);
+                   cout << numranks - numEmpty << " of " << numranks << 
+                   " ranks found members within cutout field of view" << endl;
+                }
                 cout << "Writing files..." << endl;
             }
 

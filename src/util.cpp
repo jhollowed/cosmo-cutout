@@ -277,15 +277,82 @@ float zToStep(float z, int totSteps, float maxZ){
 }
 
 
+vector<vector<float> > scalarMultiply(const vector<vector<float> > &matrix, float scalar){
+    
+    // Multiply a matrix by a scalar value
+    //
+    // Params:
+    // :param matrix: a vector<vector<float>> object 
+    // :param scalar: scalar float
+    // :return: a vector<vector<float>> object, which is matrix*scalar
+    
+    int rows = matrix.size();
+    int cols = matrix[0].size();
+    vector<vector<float> > ans(rows, vector<float>(cols));
+
+    for( int n = 0; n < rows; ++n )
+        for( int m = 0; m < cols; ++m )
+            ans[n][m] = matrix[n][m] * scalar;
+    return ans;
+}
+
+
+vector<vector<float> > squareMat(const vector<vector<float> > &matrix){
+    
+    // Square a matrix
+    //
+    // Params:
+    // :param matrix: a vector<vector<float>> object 
+    // :return: a vector<vector<float>> object,which is matrix^2
+    
+    int rows = matrix.size();
+    int cols = matrix[0].size();
+    vector<vector<float> > ans(rows, vector<float>(cols));
+    
+    for( int n = 0; n < rows; ++n )
+        for( int m = 0; m < cols; ++m )
+            for( int y=0; y < rows; ++y)
+                ans[n][m] += matrix[n][y] * matrix[y][m];
+    return ans;
+}
+
+
+vector<float> matVecMul(const vector<vector<float> > &matrix, const vector<float> &vec){
+    
+    // Multiply a matrix by a vector
+    //
+    // Params:
+    // :param matrix: a vector<vector<float>> object
+    // :param vec: a vector<float> object
+    // :return: a vector<float> object,which is matrix*vec
+    
+    int vecSize = vec.size();
+    int rows = matrix.size();
+    int cols = matrix[0].size();
+    if(vecSize != rows){
+        throw runtime_error("matrix and vector dimensions do not match");
+    }
+    
+    vector<float> ans(vecSize);
+    
+    for( int n = 0; n < rows; ++n )
+        for( int m = 0; m < cols; ++m )
+            ans[n] += (matrix[n][m] * vec[m]);
+    return ans;
+}
+
+
+void sizeMismatch(){ 
+    throw runtime_error("input vectors must have the same length");
+}
+
+
 //////////////////////////////////////////////////////
 //
 //         coord rotation functions
 //
 //////////////////////////////////////////////////////
 
-void sizeMismatch(){ 
-    throw runtime_error("input vectors must have the same length");
-}
 
 float vecPairAngle(const vector<float> &v1,
                    const vector<float> &v2){
@@ -296,7 +363,7 @@ float vecPairAngle(const vector<float> &v1,
     // :param v2: some other three-dimensional vector
     // :return: the angle between v1 and v2, in radians
    
-    // find (v1·v2), |v1|, and |v
+    // find (v1·v2), |v1|, and ||
     float v1dv2 = std::inner_product(v1.begin(), v1.end(), v2.begin(), 0.0);
     float mag_v1 = sqrt(std::inner_product(v1.begin(), v1.end(), v1.begin(), 0.0));
     float mag_v2 = sqrt(std::inner_product(v2.begin(), v2.end(), v2.begin(), 0.0));
@@ -304,6 +371,7 @@ float vecPairAngle(const vector<float> &v1,
     float theta = acos( v1dv2 / (mag_v1 * mag_v2) );
     return theta; 
 } 
+
 
 void cross(const vector<float> &v1, 
            const vector<float> &v2,
@@ -361,38 +429,51 @@ void normCross(const vector<float> &a,
 }
 
 
-void rotate(const vector<float> &k_vec,
-            const float B, 
-            const vector<float> &v_vec, 
-            vector<float> &v_rot){ 
-    // This function implements the Rodrigues rotation formula. See the docstrings
-    // under the main() function header for more info.
-    //
-    // Params:
-    // :param k_vec: the 3D normalized axis of rotation
-    // :param B: the angle of rotation, in radians
-    // :param v_vec: a 3D vector to be rotated
-    // :param v_rot: a vector of size 0 to store the result of rotating v_vec an angle B about k_vec
-    // :return: none
+void cross_prod_matrix(const vector<float> &k, vector<vector<float> > &K){
 
-    int nk = k_vec.size();
-    int nv = v_vec.size();
-    if(nk != nv){ sizeMismatch(); }
+    // Computes the cross-product matrix, K, for the unit vector k, 
+    // as used in the Rodrigues rotation formula
+    //
+    // Parms:
+    // :param k: the axis of rotation
+    // :param K: a vector<vector(float>> object in which to store the result
+    // :return: None
+
+    float Karr[3][3] = { 
+        { 0.0, -k[2], k[1]},
+        { k[2], 0.0, -k[0]},
+        {-k[1], k[0], 0.0 }
+    };
     
-    // find (k ⨯ v) and (k·v)
-    vector<float> kxv_vec;
-    cross(k_vec, v_vec, kxv_vec);
-    float kdv = std::inner_product(k_vec.begin(), k_vec.end(), v_vec.begin(), 0.0);
-    
-    // do rotation per-dimension
-    float v;
-    float k, k_x_v;
-    for(int i=0; i<nk; ++i){
-        v = v_vec[i];
-        k = k_vec[i];
-        k_x_v = kxv_vec[i];
-       
-        v_rot.push_back( v*cos(B) + (k_x_v)*sin(B) + k*kdv*(1-cos(B)) );
-    } 
+    K.push_back( vector<float>(Karr[0], Karr[0]+3) );
+    K.push_back( vector<float>(Karr[1], Karr[1]+3) );
+    K.push_back( vector<float>(Karr[2], Karr[2]+3) );
 }
 
+
+void rotation_matrix(int rank, const vector<vector<float> > &K, const float B, vector<vector<float> > &R){
+    
+    // Computes the rotation matrix, R, as found in the Rodrigues 
+    // rotation formula
+    //
+    // Parms:
+    // :param K: the cross-product matrix for the unit vector of rotation k
+    // :param B: the angle of rotation
+    // :param R: a vector<vector<float>> object in which to store the result
+    // :return: None
+    
+    vector<vector<float> > K2 = squareMat(K);
+    vector<vector<float> > Ksin = scalarMultiply(K, sin(B));
+    vector<vector<float> > K2cos = scalarMultiply(K2, 1-cos(B));
+    
+    // sum components above to find rotation matrix
+    float Rarr[3][3] = {
+        { 1.0+Ksin[0][0]+K2cos[0][0],     Ksin[0][1]+K2cos[0][1],     Ksin[0][2]+K2cos[0][2]},
+        {     Ksin[1][0]+K2cos[1][0], 1.0+Ksin[1][1]+K2cos[1][1],     Ksin[1][2]+K2cos[1][2]},
+        {     Ksin[2][0]+K2cos[2][0],     Ksin[2][1]+K2cos[2][1], 1.0+Ksin[2][2]+K2cos[2][2]}
+    };
+    
+    R.push_back( vector<float>(Rarr[0], Rarr[0]+3) );
+    R.push_back( vector<float>(Rarr[1], Rarr[1]+3) );
+    R.push_back( vector<float>(Rarr[2], Rarr[2]+3) );  
+}

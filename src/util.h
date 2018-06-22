@@ -51,13 +51,21 @@ float aToZ(float a);
 
 float zToStep(float z, int totSteps=500, float maxZ=200.0);
 
+vector<vector<float> > scalarMultiply(const vector<vector<float> > &matrix, 
+                                      float scalar);
+
+vector<vector<float> > squareMat(const vector<vector<float> > &matrix);
+
+vector<float> matVecMul(const vector<vector<float> > &matrix, 
+                        const vector<float> &vec);
+
+void sizeMismatch();
+
 //////////////////////////////////////////////////////
 //
 //            coord rotation functions
 //
 //////////////////////////////////////////////////////
-
-void sizeMismatch();
 
 float vecPairAngle(const vector<float> &v1,
                    const vector<float> &v2);
@@ -70,8 +78,11 @@ void normCross(const vector<float> &a,
            const vector<float> &b,
            vector<float> &k);
 
-void rotate(const vector<float> &k_vec,
-            const float B, 
-            const vector<float> &v_vec, 
-            vector<float> &v_rot); 
+void cross_prod_matrix(const vector<float> &k, 
+                       vector<vector<float> > &K);
+
+void rotation_matrix(int rank, const vector<vector<float> > &K, 
+                     const float B, 
+                     vector<vector<float> > &R);
+
 #endif
