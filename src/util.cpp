@@ -69,6 +69,9 @@ void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &h
 }
 
 
+//======================================================================================
+
+
 int getLCSubdirs(string dir, vector<string> &subdirs) {
     // This function writes all of the subdirectory names present in a lightcone
     // output directory to the string vector subdirs. The assumptions are that 
@@ -97,6 +100,9 @@ int getLCSubdirs(string dir, vector<string> &subdirs) {
     closedir(dp);
     return 0;
 }
+
+
+//======================================================================================
 
 
 int getLCFile(string dir, string &file) {
@@ -151,6 +157,9 @@ int getLCFile(string dir, string &file) {
     file = files[0];
     return 0;
 }
+
+
+//======================================================================================
 
 
 int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_strings){
@@ -231,16 +240,19 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
         }
     }
 
-
     return 0;
 }
 
 
+//======================================================================================
+
+
 //////////////////////////////////////////////////////
 //
-//                helper functions
+//                cosmo functions
 //
 //////////////////////////////////////////////////////
+
 
 float aToZ(float a) {
     // Converts scale factor to redshift.
@@ -251,6 +263,9 @@ float aToZ(float a) {
     
     return (1.0f/a)-1.0f;
 }
+
+
+//======================================================================================
 
 
 float zToStep(float z, int totSteps, float maxZ){
@@ -277,6 +292,24 @@ float zToStep(float z, int totSteps, float maxZ){
 }
 
 
+//======================================================================================
+
+
+//////////////////////////////////////////////////////
+//
+//           matrix/vector operations
+//
+//////////////////////////////////////////////////////
+
+
+void sizeMismatch(){ 
+    throw runtime_error("input vectors must have the same length");
+}
+
+
+//======================================================================================
+
+
 vector<vector<float> > scalarMultiply(const vector<vector<float> > &matrix, float scalar){
     
     // Multiply a matrix by a scalar value
@@ -297,6 +330,9 @@ vector<vector<float> > scalarMultiply(const vector<vector<float> > &matrix, floa
 }
 
 
+//======================================================================================
+
+
 vector<vector<float> > squareMat(const vector<vector<float> > &matrix){
     
     // Square a matrix
@@ -315,6 +351,9 @@ vector<vector<float> > squareMat(const vector<vector<float> > &matrix){
                 ans[n][m] += matrix[n][y] * matrix[y][m];
     return ans;
 }
+
+
+//======================================================================================
 
 
 vector<float> matVecMul(const vector<vector<float> > &matrix, const vector<float> &vec){
@@ -342,16 +381,7 @@ vector<float> matVecMul(const vector<vector<float> > &matrix, const vector<float
 }
 
 
-void sizeMismatch(){ 
-    throw runtime_error("input vectors must have the same length");
-}
-
-
-//////////////////////////////////////////////////////
-//
-//         coord rotation functions
-//
-//////////////////////////////////////////////////////
+//======================================================================================
 
 
 float vecPairAngle(const vector<float> &v1,
@@ -371,6 +401,33 @@ float vecPairAngle(const vector<float> &v1,
     float theta = acos( v1dv2 / (mag_v1 * mag_v2) );
     return theta; 
 } 
+
+
+//======================================================================================
+
+
+float dot(const vector<float> &v1, 
+          const vector<float> &v2){
+    // This function calculates the dot product of two N-dimensional vectors
+    //
+    // Params:
+    // :param v1: some N-dimensional vector
+    // :param v2: some other N-dimensional vector
+    // :return: the dot product as a float
+    
+    int n1 = v1.size();
+    int n2 = v2.size();
+    if(n1 != n2){ sizeMismatch(); }
+    
+    float dot = 0;
+    for(int i = 0; i < n1; ++i){
+        dot += v1[i] * v2[i];
+    }
+    return dot;
+}
+
+
+//======================================================================================
 
 
 void cross(const vector<float> &v1, 
@@ -394,6 +451,9 @@ void cross(const vector<float> &v1,
     v1xv2.push_back( -(v1[0]*v2[2] - v1[2]*v2[0]) );
     v1xv2.push_back( v1[0]*v2[1] - v1[1]*v2[0] );
 }
+
+
+//======================================================================================
 
 
 void normCross(const vector<float> &a,
@@ -422,11 +482,109 @@ void normCross(const vector<float> &a,
     for(int i=0; i<na; ++i){
         if(mag_axb == 0){ 
             k.push_back(0);
-        }else{
+        } else {
             k.push_back( axb[i] / mag_axb );
         }
     }
 }
+
+
+//======================================================================================
+
+
+//////////////////////////////////////////////////////////////////////
+// 
+// The following functions come from vvector.h in the OpenGL Utility 
+// Toolkit (glut). I've rewritten them here as functions rather than 
+// macros for ease of use. See 
+// https://github.com/markkilgard/glut/blob/master/lib/gle/vvector.h
+//
+//  vvector.h
+// 
+//  FUNCTION:
+//  This file contains a number of utilities useful for handling
+//  3D vectors
+//  
+//  HISTORY:
+//  Written by Linas Vepstas, August 1991
+//  Added 2D code, March 1993
+//  Added Outer products, C++ proofed, Linas Vepstas October 1993
+//
+// ///////////////////////////////////////////////////////////////////
+
+
+double determinant_3x3(const vector<vector<float> > &m){
+   
+   // Computes the determinant of a 3x3 matrix
+   //
+   // Params:
+   // :param m: a vector<vector<float>> object (matrix)
+   // :return: the determinant of m as a double
+
+    double d; 
+    d = m[0][0] * (m[1][1]*m[2][2] - m[1][2] * m[2][1]);		
+    d -= m[0][1] * (m[1][0]*m[2][2] - m[1][2] * m[2][0]);	
+    d += m[0][2] * (m[1][0]*m[2][1] - m[1][1] * m[2][0]);	
+    return d;
+}
+
+
+//======================================================================================
+
+
+vector<vector<float> > scale_adjoint_3x3(const vector<vector<float> > &m, float s){
+    
+    // Computes the adjoint of a 3x3 matrix, and scales it
+    //
+    // Params:
+    // :param m: a vector<vector<float>> object (matrix)
+    // :param s: the scaling factor
+
+    vector<vector<float> > a(3, vector<float>(3));
+
+    a[0][0] = (s) * (m[1][1] * m[2][2] - m[1][2] * m[2][1]);	
+    a[1][0] = (s) * (m[1][2] * m[2][0] - m[1][0] * m[2][2]);	
+    a[2][0] = (s) * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);	
+								
+    a[0][1] = (s) * (m[0][2] * m[2][1] - m[0][1] * m[2][2]);	
+    a[1][1] = (s) * (m[0][0] * m[2][2] - m[0][2] * m[2][0]);	
+    a[2][1] = (s) * (m[0][1] * m[2][0] - m[0][0] * m[2][1]);	
+								
+    a[0][2] = (s) * (m[0][1] * m[1][2] - m[0][2] * m[1][1]);	
+    a[1][2] = (s) * (m[0][2] * m[1][0] - m[0][0] * m[1][2]);	
+    a[2][2] = (s) * (m[0][0] * m[1][1] - m[0][1] * m[1][0]);
+    return a;
+}
+
+
+//======================================================================================
+
+
+vector<vector<float> > invert_3x3(const vector<vector<float> > &m){
+
+    // Inverts a 3x3 matrix
+    //
+    // Params:
+    // :param m: the matrix to invert as a vector<vector<float>> object
+    // :return: the 3x3 matrix inversion of m
+
+    double det_inv;					    
+    double  det = determinant_3x3(m);	    
+    det_inv = 1.0 / (det);				
+    vector<vector<float> > m_inv;
+    m_inv = scale_adjoint_3x3(m, det_inv);
+    return m_inv;
+}
+
+
+//======================================================================================
+
+
+//////////////////////////////////////////////////////
+//
+//         coord rotation functions
+//
+//////////////////////////////////////////////////////
 
 
 void cross_prod_matrix(const vector<float> &k, vector<vector<float> > &K){
@@ -449,6 +607,9 @@ void cross_prod_matrix(const vector<float> &k, vector<vector<float> > &K){
     K.push_back( vector<float>(Karr[1], Karr[1]+3) );
     K.push_back( vector<float>(Karr[2], Karr[2]+3) );
 }
+
+
+//======================================================================================
 
 
 void rotation_matrix(int rank, const vector<vector<float> > &K, const float B, vector<vector<float> > &R){

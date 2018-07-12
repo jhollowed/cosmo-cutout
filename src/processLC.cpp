@@ -523,9 +523,22 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     // cross-product matrix K and rotation matrix R per halo
     vector<vector<vector<float> > > K(numHalos);
     vector<vector<vector<float> > > R(numHalos);
-
+    vector<vector<vector<float> > > R_inv(numHalos);
+    
+    // constant (equitorial) angular bounds per halo and
+    // rough constant (rotated) angular bounds per halo
     vector<vector<float> > theta_cut(numHalos);
     vector<vector<float> > phi_cut(numHalos);
+    vector<vector<float> > theta_cut_rough(numHalos);
+    vector<vector<float> > phi_cut_rough(numHalos);
+
+    // field of view boundary vectors per halo
+    vector<vector<float> > A_sph(numHalos);
+    vector<vector<float> > B_sph(numHalos);
+    vector<vector<float> > fov_AB(numHalos);
+    vector<float> fov_dotAB(numHalos);
+    vector<vector<float> > fov_BC(numHalos);
+    vector<float> fov_dotBC(numHalos);
 
     for(int h=0; h<halo_pos.size(); h+=3){ 
         
@@ -539,36 +552,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         float halo_r = (float)sqrt(this_halo_pos[0]*this_halo_pos[0] + 
                                         this_halo_pos[1]*this_halo_pos[1] + 
                                         this_halo_pos[2]*this_halo_pos[2]);
-        float tmp[] = {halo_r, 0, 0};
-        vector<float> rotated_pos(tmp, tmp+3);
-        if(rank == 0){ cout << "\nFinding axis of rotation to move (" << 
-                       this_halo_pos[0]<< ", " << this_halo_pos[1]<< ", " << this_halo_pos[2]<< ") to (" <<
-                       rotated_pos[0] << ", " << rotated_pos[1] << ", " << rotated_pos[2] <<
-                       ")" << endl; }
-
-        // get angle and axis of rotation
-        normCross(this_halo_pos, rotated_pos, k[haloIdx]);
-        B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
-
-        if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "° about axis k = (" << 
-                       k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl;
-        }
         
-        // get rotation matrix R -- this only needs to be calculated once for all
-        // steps, and it will be used to rotate all other position vectors in the 
-        // loops below
-        cross_prod_matrix(k[haloIdx], K[haloIdx]);
-        rotation_matrix(rank, K[haloIdx], B[haloIdx], R[haloIdx]);
-
-        if(rank == 0){ cout << "Rotation Matrix is " << endl << 
-                       "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
-                               R[haloIdx][0][2] << "}" << endl <<
-                       "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
-                               R[haloIdx][1][2] << "}" << endl <<
-                       "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
-                               R[haloIdx][2][2] << "}" << endl;
-        }
-
+        // get the halo-centric angular bounds of the cutout...
         // calculate dtheta and dphi in radians
         float halfBoxLength = boxLength / 2.0;
         float dtheta = atan(halfBoxLength / halo_r);
@@ -579,17 +564,185 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         theta_cut[haloIdx].push_back( (PI/2 + dtheta) * 180.0/PI * ARCSEC );
         phi_cut[haloIdx].push_back( (0 - dphi) * 180.0/PI * ARCSEC );
         phi_cut[haloIdx].push_back( (0 + dphi) * 180.0/PI * ARCSEC );
+        
         if(rank == 0){ 
             cout << "theta bounds set to: ";
-            cout << theta_cut[haloIdx][0]/ARCSEC << "° -> " << theta_cut[haloIdx][1]/ARCSEC <<"°"<< endl;
+            cout << theta_cut[haloIdx][0]/ARCSEC << "deg -> " << theta_cut[haloIdx][1]/ARCSEC <<"deg"<< endl;
             cout << "phi bounds set to: ";
-            cout << phi_cut[haloIdx][0]/ARCSEC << "° -> " << phi_cut[haloIdx][1]/ARCSEC <<"°" << endl;
+            cout << phi_cut[haloIdx][0]/ARCSEC << "deg -> " << phi_cut[haloIdx][1]/ARCSEC <<"deg" << endl;
             cout << "theta-phi bounds result in box width of " << 
                     tan(dtheta) * halo_r * 2 << 
                     " Mpc/h at distance to halo of " << halo_r << " Mpc/h" << endl << 
-                    "        " << "= " << dtheta*2*180.0/PI << "°x" << dphi*2*180.0/PI << 
-                    "° field of view" << endl;
+                    "        " << "= " << dtheta*2*180.0/PI << "deg x " << dphi*2*180.0/PI << 
+                    "deg field of view" << endl;
+        } 
+        
+        // Now let's rotate the angular bounds to their true position in the sky
+        // Using the Rodrigues rotation formula...
+
+        float tmp_rot_pos[] = {halo_r, 0, 0};
+        vector<float> rotated_pos(tmp_rot_pos, tmp_rot_pos+3);
+        if(rank == 0){ cout << "\nFinding axis of rotation to move (" << 
+                       this_halo_pos[0]<< ", " << this_halo_pos[1]<< ", " << this_halo_pos[2]<< ") to (" <<
+                       rotated_pos[0] << ", " << rotated_pos[1] << ", " << rotated_pos[2] <<
+                       ")" << endl; }
+
+        // get angle and axis of rotation
+        normCross(this_halo_pos, rotated_pos, k[haloIdx]);
+        B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
+
+        if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "deg about axis k = (" << 
+                       k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl;
         }
+        
+        // get rotation matrix R
+        cross_prod_matrix(k[haloIdx], K[haloIdx]);
+        rotation_matrix(rank, K[haloIdx], B[haloIdx], R[haloIdx]);
+
+        // invert rotation matrix R
+        R_inv[haloIdx] = invert_3x3(R[haloIdx]);
+        
+        if(rank == 0){ cout << "Rotation Matrix is " << endl << 
+                       "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
+                               R[haloIdx][0][2] << "}" << endl <<
+                       "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
+                               R[haloIdx][1][2] << "}" << endl <<
+                       "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
+                               R[haloIdx][2][2] << "}" << endl;
+        }
+        if(rank == 0){ cout << "Inverted Rotation Matrix is " << endl << 
+                       "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
+                               R[haloIdx][0][2] << "}" << endl <<
+                       "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
+                               R[haloIdx][1][2] << "}" << endl <<
+                       "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
+                               R[haloIdx][2][2] << "}" << endl;
+        }
+
+        // now, we have defined theta_cut and phi_cut above in such a way that it 
+        // encapsulates a field of length boxLength at the distance of the target halo
+        // *if it were lying on the equator*. With the cutout sized correctly, we can now
+        // "point it" at the true halo posiiton to get the real non-constant angular bounds.
+        // We do this by defining four unit vectors (A, B, C, D) directed toward the 
+        // corners of the bounded fov on the equator, and rotate them according to the 
+        // inverted rotation matrix defined above:
+        //                                          C
+        //                                        _--_ 
+        //    B-----------C                     _-    -_  
+        //    |           |    R_inv          _-        -_   
+        //    |           |  -------->>   B _-            -_ D
+        //    |   fov     |                  -_   fov    _-
+        //    |           |                    -_      _-
+        //    A-----------D                      -_  _-  <--- boxLength
+        //          ^                              --
+        //          |__ boxLength                  A
+        //
+        
+        float fov_corner_A[] = { sin(theta_cut[haloIdx][0]) * cos(phi_cut[haloIdx][0]), 
+                                 sin(theta_cut[haloIdx][0]) * sin(phi_cut[haloIdx][0]), 
+                                 cos(theta_cut[haloIdx][0]) };
+        vector<float> A(fov_corner_A, fov_corner_A+3);
+        vector<float> A_rot;  
+
+        float fov_corner_B[] = { sin(theta_cut[haloIdx][1]) * cos(phi_cut[haloIdx][0]), 
+                                 sin(theta_cut[haloIdx][1]) * sin(phi_cut[haloIdx][0]), 
+                                 cos(theta_cut[haloIdx][1]) };
+        vector<float> B(fov_corner_B, fov_corner_B+3);
+        vector<float> B_rot;  
+
+        float fov_corner_C[] = { sin(theta_cut[haloIdx][1]) * cos(phi_cut[haloIdx][1]), 
+                                 sin(theta_cut[haloIdx][1]) * sin(phi_cut[haloIdx][1]), 
+                                 cos(theta_cut[haloIdx][1]) };
+        vector<float> C(fov_corner_C, fov_corner_C+3);
+        vector<float> C_rot;  
+        
+        float fov_corner_D[] = { sin(theta_cut[haloIdx][0]) * cos(phi_cut[haloIdx][1]), 
+                                 sin(theta_cut[haloIdx][0]) * sin(phi_cut[haloIdx][1]), 
+                                 cos(theta_cut[haloIdx][0]) };
+        vector<float> D(fov_corner_D, fov_corner_D+3);
+        vector<float> D_rot;  
+        
+        A_rot = matVecMul(R_inv[haloIdx], A);
+        B_rot = matVecMul(R_inv[haloIdx], B); 
+        C_rot = matVecMul(R_inv[haloIdx], C); 
+        D_rot = matVecMul(R_inv[haloIdx], D); 
+
+        if(rank == 0){ cout << "Rotated cartesian vectors pointing toward FOV corners are" <<
+                               "A = {" << A_rot[0] << ", " << A_rot[1] << ", " << A_rot[2] << "}" << endl <<
+                               "B = {" << B_rot[0] << ", " << B_rot[1] << ", " << B_rot[2] << "}" << endl <<
+                               "C = {" << C_rot[0] << ", " << C_rot[1] << ", " << C_rot[2] << "}" << endl <<
+                               "D = {" << D_rot[0] << ", " << D_rot[1] << ", " << D_rot[2] << "}" << endl;
+                     }
+
+        // convert vectors A and B to 2-dimensional spherical coordinate vectors {theta, phi}
+        // (C_sph and D_sph are not needed later in the per-particle calculation, so just redefine 
+        // them here for each input halo)
+        
+        A_sph[haloIdx].push_back( acos(A_rot[2]/1) );
+        A_sph[haloIdx].push_back( atan(A_rot[1]/A_rot[0]) );
+        
+        B_sph[haloIdx].push_back( acos(B_rot[2]/1) );
+        B_sph[haloIdx].push_back( atan(B_rot[1]/B_rot[0]) );
+        
+        vector<float> C_sph;
+        C_sph.push_back( acos(C_rot[2]/1) );
+        C_sph.push_back( atan(C_rot[1]/C_rot[0]) );
+        
+        vector<float> D_sph;
+        D_sph.push_back( acos(D_rot[2]/1) );
+        D_sph.push_back( atan(D_rot[1]/D_rot[0]) );
+
+        // define rough-cut bounds, to be used to quickly remove particles that certainly are not in
+        // the field of view. After a cut is done in this way, we can treat the remaining particles
+        // more carefully
+       
+        float tmp_thetas[] = {A_sph[haloIdx][0], B_sph[haloIdx][0], C_sph[0], D_sph[0]};
+        vector<float> theta_corners(tmp_thetas, tmp_thetas+3);
+        theta_cut_rough[haloIdx].push_back( *min_element(theta_corners.begin(), theta_corners.end()) );
+        theta_cut_rough[haloIdx].push_back( *max_element(theta_corners.begin(), theta_corners.end()) ); 
+        
+        float tmp_phis[] = {A_sph[haloIdx][1], B_sph[haloIdx][1], C_sph[1], D_sph[1]};
+        vector<float> phi_corners(tmp_phis, tmp_phis+3);
+        phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) );
+        phi_cut_rough[haloIdx].push_back( *max_element(phi_corners.begin(), phi_corners.end()) ); 
+        
+        
+        // with the positions of the corners of the rotated fov in hand, we can 
+        // set up facilities for asking the question, "does point M lie within the 
+        // field of view?" I do this using vector projections; after converting to 
+        // spherical coordinates, two vectors are defined joining the three vertices 
+        // declared above (vectors AB and BC). Two more vectors will later be defined, 
+        // per-particle, directed from coreners A and B to the point of interest, M, 
+        // (vectors AM and BM) as such:
+        //     
+        //    _____________ C __________
+        //    |           >--_          |
+        //    |         _-    -_        | <--- "rough cut" constant angular bounds as
+        //    |    BC _-        -_      |       defined above. only particles left over 
+        //    |     _-            -_    |       in the inner triangles (interior to the 
+        //    |   _-    ___-->M     -_  |       rough cut, exterior to the actual fov)
+        //    B _-___---BM   ^        -_|       will be treated more carefully, as below
+        //    | ^-_          |       _- |
+        //    |    -_       |AM    _-   |
+        //    |      -_     |    _-     | 
+        //    |    AB  -_  |   _-       | 
+        //    |          -_| _-         |
+        //    |___________ --__________ |
+        //                  A
+        //
+        // M is then found inside the field of view iff 0 <= dot(AB, AM) <= dot(AB,AB) &&
+        //                                              0 <= dot(BC,BM) <= dot(BC,BC)
+
+        fov_AB[haloIdx].push_back( B_sph[haloIdx][0] - A_sph[haloIdx][0] );
+        fov_AB[haloIdx].push_back( B_sph[haloIdx][1] - A_sph[haloIdx][1] );
+        fov_dotAB[haloIdx] = dot(fov_AB[haloIdx], fov_AB[haloIdx]);
+         
+        fov_BC[haloIdx].push_back( C_sph[0] - B_sph[haloIdx][0] );
+        fov_BC[haloIdx].push_back( C_sph[1] - B_sph[haloIdx][1] );
+        fov_dotBC[haloIdx] = dot(fov_BC[haloIdx], fov_BC[haloIdx]);
+
+        if(rank == 0){ cout << "Found FOV vectors AB and BC" << endl; }
+
     }
 
     ///////////////////////////////////////////////////////////////
@@ -822,48 +975,77 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             ///////////////////////////////////////////////////////////////
 
             if(rank == 0){ cout << "Converting positions..." << endl; }
+            
+            // define vectors joining fov corners to particle (see comments/diagram above)
+            vector<float> AM(2);
+            vector<float> BM(2);
 
             for (int n=0; n<Np; ++n) {
 
                 // limit cutout to first octant for speed
                 if (r.x[n] > 0.0 && r.y[n] > 0.0 && r.z[n] > 0.0){
 
-                    // do coordinate rotation center halo at (r, 90, 0)
-                    // B and k are the angle and axis of rotation, respectively,
-                    // calculated near the beginning of this function
-                    float tmp[] = {r.x[n], r.y[n], r.z[n]};
-                    vector<float> v(tmp, tmp+3);
-                    vector<float> v_rot;
-                    v_rot = matVecMul(R[haloIdx], v); 
-
                     // spherical coordinate transformation
-                    float d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
-                                               v_rot[2]*v_rot[2]);
-                    float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
-                    float v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC;
-
-                    // do cut and push back data for objects in cutout
-                    if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
-                            v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1]) {
+                    float d = (float)sqrt( r.x[n]*r.x[n] + 
+                                           r.y[n]*r.y[n] + 
+                                           r.z[n]*r.z[n]);
+                    float theta = acos(r.z[n]/d) * 180.0 / PI * ARCSEC;
+                    float phi = atan(r.y[n]/r.x[n]) * 180.0 / PI * ARCSEC;
                     
-                        // get redshift from scale factor
-                        float zz = aToZ(r.a[n]);  
-                        
-                        // spherical corrdinate transform of rotated positions
-                        w.theta.push_back(v_theta);
-                        w.phi.push_back(v_phi);
+                    // do rough cut first with constant angular bounds
+                    if (theta > theta_cut_rough[haloIdx][0] && theta < theta_cut_rough[haloIdx][1] && 
+                            phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
+                    
+                        // update M, AM, and BM (see comments/diagram above)
+                        AM[0] = theta - A_sph[haloIdx][0];
+                        AM[1] = phi - A_sph[haloIdx][1];
+                        BM[0] = theta - B_sph[haloIdx][0];
+                        BM[1] = phi - B_sph[haloIdx][1];
 
-                        // other columns
-                        w.x.push_back(r.x[n]);
-                        w.y.push_back(r.y[n]);
-                        w.z.push_back(r.z[n]);
-                        w.vx.push_back(r.vx[n]);
-                        w.vy.push_back(r.vy[n]);
-                        w.vz.push_back(r.vz[n]);
-                        w.redshift.push_back(zz);
-                        w.id.push_back(r.id[n]);
-                        w.rotation.push_back(r.rotation[n]);
-                        w.replication.push_back(r.replication[n]);
+                        float dotABAM = dot(fov_AB[haloIdx], AM);
+                        float dotBCBM = dot(fov_BC[haloIdx], BM);
+
+                        // do final cut using projection method (see comments.diagrams above)
+                        if ( (0 <= dotABAM && dotABAM <= fov_dotAB[haloIdx]) &&
+                             (0 <= dotBCBM && dotBCBM <= fov_dotBC[haloIdx]) ){
+
+                            // Finally, these are the correct particles within the cutout. 
+                            // Let's do a proper rotation on them now, since we want to
+                            // return cluster-centric angular coordinates
+                            
+                            // do coordinate rotation center halo at (r, 90, 0)
+                            // B and k are the angle and axis of rotation, respectively,
+                            // calculated near the beginning of this function
+                            float tmp_v[] = {r.x[n], r.y[n], r.z[n]};
+                            vector<float> v(tmp_v, tmp_v+3);
+                            vector<float> v_rot;
+                            v_rot = matVecMul(R[haloIdx], v);
+
+                            // spherical coordinate transformation
+                            d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
+                                            v_rot[2]*v_rot[2]);
+                            float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
+                            float v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
+                        
+                            // get redshift from scale factor
+                            float zz = aToZ(r.a[n]);  
+                            
+                            // spherical corrdinate transform of rotated positions
+                            w.theta.push_back(v_theta);
+                            w.phi.push_back(v_phi);
+
+                            // other columns
+                            w.x.push_back(r.x[n]);
+                            w.y.push_back(r.y[n]);
+                            w.z.push_back(r.z[n]);
+                            w.vx.push_back(r.vx[n]);
+                            w.vy.push_back(r.vy[n]);
+                            w.vz.push_back(r.vz[n]);
+                            w.redshift.push_back(zz);
+                            w.id.push_back(r.id[n]);
+                            w.rotation.push_back(r.rotation[n]);
+                            w.replication.push_back(r.replication[n]);
+                        }
                     }
                 }
             }

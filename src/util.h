@@ -41,15 +41,25 @@ int getLCFile(string dir, string &file);
 
 int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_strings);
 
+
 //////////////////////////////////////////////////////
 //
-//               helper Functions
+//               cosmo Functions
 //
 //////////////////////////////////////////////////////
 
 float aToZ(float a);
 
 float zToStep(float z, int totSteps=500, float maxZ=200.0);
+
+
+//////////////////////////////////////////////////////
+//
+//           matrix/vector operations
+//
+//////////////////////////////////////////////////////
+
+void sizeMismatch();
 
 vector<vector<float> > scalarMultiply(const vector<vector<float> > &matrix, 
                                       float scalar);
@@ -59,16 +69,11 @@ vector<vector<float> > squareMat(const vector<vector<float> > &matrix);
 vector<float> matVecMul(const vector<vector<float> > &matrix, 
                         const vector<float> &vec);
 
-void sizeMismatch();
-
-//////////////////////////////////////////////////////
-//
-//            coord rotation functions
-//
-//////////////////////////////////////////////////////
-
 float vecPairAngle(const vector<float> &v1,
                    const vector<float> &v2);
+
+float dot(const vector<float> &v1, 
+          const vector<float> &v2);
 
 void cross(const vector<float> &v1, 
            const vector<float> &v2,
@@ -77,6 +82,19 @@ void cross(const vector<float> &v1,
 void normCross(const vector<float> &a,
            const vector<float> &b,
            vector<float> &k);
+
+double determinant_3x3(const vector<vector<float> > &m);
+
+vector<vector<float> > scale_adjoint_3x3(const vector<vector<float> > &m, float s = 1.0);
+    
+vector<vector<float> > invert_3x3(const vector<vector<float> > &m);
+
+
+//////////////////////////////////////////////////////
+//
+//            coord rotation functions
+//
+//////////////////////////////////////////////////////
 
 void cross_prod_matrix(const vector<float> &k, 
                        vector<vector<float> > &K);
