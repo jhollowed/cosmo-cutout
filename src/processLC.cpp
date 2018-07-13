@@ -203,9 +203,8 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
             closedir(dir);
 
             if(nf > 2){
-                ostringstream badDir;
-                badDir << "Directory " << step_subdir.str() << " is non-empty";
-                throw runtime_error(badDir.str());
+                cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
+                MPI_Abort(MPI_COMM_WORLD, 0);
             }
             if(rank == 0){ cout << "Entered subdir: " << step_subdir.str() << endl; }
         }
@@ -602,7 +601,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // invert rotation matrix R
         R_inv[haloIdx] = invert_3x3(R[haloIdx]);
         
-        if(rank == 0){ cout << "Rotation Matrix is " << endl << 
+        if(rank == 0){ cout << "\nRotation Matrix is " << endl << 
                        "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
                                R[haloIdx][0][2] << "}" << endl <<
                        "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
@@ -611,12 +610,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                R[haloIdx][2][2] << "}" << endl;
         }
         if(rank == 0){ cout << "Inverted Rotation Matrix is " << endl << 
-                       "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
-                               R[haloIdx][0][2] << "}" << endl <<
-                       "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
-                               R[haloIdx][1][2] << "}" << endl <<
-                       "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
-                               R[haloIdx][2][2] << "}" << endl;
+                       "{ " << R_inv[haloIdx][0][0] << ", " << R_inv[haloIdx][0][1] << ", " << 
+                               R_inv[haloIdx][0][2] << "}" << endl <<
+                       "{ " << R_inv[haloIdx][1][0] << ", " << R_inv[haloIdx][1][1] << ", " << 
+                               R_inv[haloIdx][1][2] << "}" << endl <<
+                       "{ " << R_inv[haloIdx][2][0] << ", " << R_inv[haloIdx][2][1] << ", " << 
+                               R_inv[haloIdx][2][2] << "}" << endl;
         }
 
         // now, we have defined theta_cut and phi_cut above in such a way that it 
@@ -637,28 +636,36 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         //          ^                              --
         //          |__ boxLength                  A
         //
+      
+        // get theta dn phi bounds in radians 
+        vector<float> theta_cut_rad;
+        theta_cut_rad.push_back( (theta_cut[haloIdx][0] / ARCSEC) * PI/180.0); 
+        theta_cut_rad.push_back( (theta_cut[haloIdx][1] / ARCSEC) * PI/180.0); 
+        vector<float> phi_cut_rad;
+        phi_cut_rad.push_back( (phi_cut[haloIdx][0] / ARCSEC) * PI/180.0); 
+        phi_cut_rad.push_back( (phi_cut[haloIdx][1] / ARCSEC) * PI/180.0); 
         
-        float fov_corner_A[] = { sin(theta_cut[haloIdx][0]) * cos(phi_cut[haloIdx][0]), 
-                                 sin(theta_cut[haloIdx][0]) * sin(phi_cut[haloIdx][0]), 
-                                 cos(theta_cut[haloIdx][0]) };
+        float fov_corner_A[] = { sin(theta_cut_rad[1]) * cos(phi_cut_rad[1]), 
+                                 sin(theta_cut_rad[1]) * sin(phi_cut_rad[1]), 
+                                 cos(theta_cut_rad[1]) };
         vector<float> A(fov_corner_A, fov_corner_A+3);
         vector<float> A_rot;  
 
-        float fov_corner_B[] = { sin(theta_cut[haloIdx][1]) * cos(phi_cut[haloIdx][0]), 
-                                 sin(theta_cut[haloIdx][1]) * sin(phi_cut[haloIdx][0]), 
-                                 cos(theta_cut[haloIdx][1]) };
+        float fov_corner_B[] = { sin(theta_cut_rad[0]) * cos(phi_cut_rad[1]), 
+                                 sin(theta_cut_rad[0]) * sin(phi_cut_rad[1]), 
+                                 cos(theta_cut_rad[0]) };
         vector<float> B(fov_corner_B, fov_corner_B+3);
         vector<float> B_rot;  
 
-        float fov_corner_C[] = { sin(theta_cut[haloIdx][1]) * cos(phi_cut[haloIdx][1]), 
-                                 sin(theta_cut[haloIdx][1]) * sin(phi_cut[haloIdx][1]), 
-                                 cos(theta_cut[haloIdx][1]) };
+        float fov_corner_C[] = { sin(theta_cut_rad[0]) * cos(phi_cut_rad[0]), 
+                                 sin(theta_cut_rad[0]) * sin(phi_cut_rad[0]), 
+                                 cos(theta_cut_rad[0]) };
         vector<float> C(fov_corner_C, fov_corner_C+3);
         vector<float> C_rot;  
         
-        float fov_corner_D[] = { sin(theta_cut[haloIdx][0]) * cos(phi_cut[haloIdx][1]), 
-                                 sin(theta_cut[haloIdx][0]) * sin(phi_cut[haloIdx][1]), 
-                                 cos(theta_cut[haloIdx][0]) };
+        float fov_corner_D[] = { sin(theta_cut_rad[1]) * cos(phi_cut_rad[0]), 
+                                 sin(theta_cut_rad[1]) * sin(phi_cut_rad[0]), 
+                                 cos(theta_cut_rad[1]) };
         vector<float> D(fov_corner_D, fov_corner_D+3);
         vector<float> D_rot;  
         
@@ -667,46 +674,66 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         C_rot = matVecMul(R_inv[haloIdx], C); 
         D_rot = matVecMul(R_inv[haloIdx], D); 
 
-        if(rank == 0){ cout << "Rotated cartesian vectors pointing toward FOV corners are" <<
+        if(rank == 0){ cout << "\nRotated cartesian vectors pointing toward FOV corners are" << endl <<
                                "A = {" << A_rot[0] << ", " << A_rot[1] << ", " << A_rot[2] << "}" << endl <<
                                "B = {" << B_rot[0] << ", " << B_rot[1] << ", " << B_rot[2] << "}" << endl <<
                                "C = {" << C_rot[0] << ", " << C_rot[1] << ", " << C_rot[2] << "}" << endl <<
                                "D = {" << D_rot[0] << ", " << D_rot[1] << ", " << D_rot[2] << "}" << endl;
                      }
 
-        // convert vectors A and B to 2-dimensional spherical coordinate vectors {theta, phi}
-        // (C_sph and D_sph are not needed later in the per-particle calculation, so just redefine 
+        // convert vectors A and B to 2-dimensional spherical coordinate 
+        // vectors {theta, phi} in arcsec (C_sph and D_sph are not needed 
+        // later in the per-particle calculation, so just redefine 
         // them here for each input halo)
         
-        A_sph[haloIdx].push_back( acos(A_rot[2]/1) );
-        A_sph[haloIdx].push_back( atan(A_rot[1]/A_rot[0]) );
+        A_sph[haloIdx].push_back( acos(A_rot[2]/1) * 180.0/PI * ARCSEC);
+        A_sph[haloIdx].push_back( atan(A_rot[1]/A_rot[0]) * 180.0/PI * ARCSEC);
         
-        B_sph[haloIdx].push_back( acos(B_rot[2]/1) );
-        B_sph[haloIdx].push_back( atan(B_rot[1]/B_rot[0]) );
+        B_sph[haloIdx].push_back( acos(B_rot[2]/1) * 180.0/PI * ARCSEC);
+        B_sph[haloIdx].push_back( atan(B_rot[1]/B_rot[0]) * 180.0/PI * ARCSEC);
         
         vector<float> C_sph;
-        C_sph.push_back( acos(C_rot[2]/1) );
-        C_sph.push_back( atan(C_rot[1]/C_rot[0]) );
+        C_sph.push_back( acos(C_rot[2]/1) * 180.0/PI * ARCSEC);
+        C_sph.push_back( atan(C_rot[1]/C_rot[0]) * 180.0/PI * ARCSEC);
         
         vector<float> D_sph;
-        D_sph.push_back( acos(D_rot[2]/1) );
-        D_sph.push_back( atan(D_rot[1]/D_rot[0]) );
+        D_sph.push_back( acos(D_rot[2]/1) * 180.0/PI * ARCSEC);
+        D_sph.push_back( atan(D_rot[1]/D_rot[0]) * 180.0/PI * ARCSEC);
+        
+        if(rank == 0){ cout << "\nAngular positions of the FOV corners in degrees are" << endl <<
+                               "A = {" << A_sph[haloIdx][0]/ARCSEC << ", " << A_sph[haloIdx][1]/ARCSEC <<
+                                          "}" << endl <<
+                               "B = {" << B_sph[haloIdx][0]/ARCSEC << ", " << B_sph[haloIdx][1]/ARCSEC <<
+                                          "}" << endl <<
+                               "C = {" << C_sph[0]/ARCSEC << ", " << C_sph[1]/ARCSEC <<
+                                          "}" << endl <<
+                               "D = {" << D_sph[0]/ARCSEC << ", " << D_sph[1]/ARCSEC <<
+                                          "}" << endl;
+                     }
 
-        // define rough-cut bounds, to be used to quickly remove particles that certainly are not in
-        // the field of view. After a cut is done in this way, we can treat the remaining particles
-        // more carefully
+        // define rough-cut bounds, in arcsec, to be used to quickly remove particles that certainly 
+        // are not inthe field of view. After a cut is done in this way, we can treat the remaining 
+        // particles more carefully
        
         float tmp_thetas[] = {A_sph[haloIdx][0], B_sph[haloIdx][0], C_sph[0], D_sph[0]};
-        vector<float> theta_corners(tmp_thetas, tmp_thetas+3);
+        vector<float> theta_corners(tmp_thetas, tmp_thetas+4);
         theta_cut_rough[haloIdx].push_back( *min_element(theta_corners.begin(), theta_corners.end()) );
         theta_cut_rough[haloIdx].push_back( *max_element(theta_corners.begin(), theta_corners.end()) ); 
         
         float tmp_phis[] = {A_sph[haloIdx][1], B_sph[haloIdx][1], C_sph[1], D_sph[1]};
-        vector<float> phi_corners(tmp_phis, tmp_phis+3);
+        vector<float> phi_corners(tmp_phis, tmp_phis+4);
         phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) );
         phi_cut_rough[haloIdx].push_back( *max_element(phi_corners.begin(), phi_corners.end()) ); 
         
-        
+        if(rank == 0){
+            cout << "\nrough theta bounds set to: ";
+            cout << theta_cut_rough[haloIdx][0]/ARCSEC << "deg -> " << 
+                    theta_cut_rough[haloIdx][1]/ARCSEC <<"deg"<< endl;
+            cout << "rough phi bounds set to: ";
+            cout << phi_cut_rough[haloIdx][0]/ARCSEC << "deg -> " << 
+                    phi_cut_rough[haloIdx][1]/ARCSEC <<"deg" << endl;
+        }
+           
         // with the positions of the corners of the rotated fov in hand, we can 
         // set up facilities for asking the question, "does point M lie within the 
         // field of view?" I do this using vector projections; after converting to 
@@ -741,7 +768,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         fov_BC[haloIdx].push_back( C_sph[1] - B_sph[haloIdx][1] );
         fov_dotBC[haloIdx] = dot(fov_BC[haloIdx], fov_BC[haloIdx]);
 
-        if(rank == 0){ cout << "Found FOV vectors AB and BC" << endl; }
+        if(rank == 0){ cout << "\nFound FOV vectors AB and BC" << endl; }
 
     }
 
@@ -874,9 +901,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 closedir(dir);
 
                 if(nf > 2){
-                    ostringstream badDir;
-                    badDir << "Directory " << step_subdir.str() << " is non-empty";
-                    throw runtime_error(badDir.str());
+                    cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
+                    MPI_Abort(MPI_COMM_WORLD, 0);
                 }
                 if(rank == 0){ cout << "Entered subdir: " << step_subdir.str() << endl; }
             }
@@ -1084,7 +1110,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     for(int m=0; m < numranks; ++m){ cout << w.np_offset[m] << ","; }
                     cout << "]" << endl;
                 } else {
-                   int numEmpty = count(w.np_count.begin(), w.np_count.end(), 0);
+                   int numEmpty = count(&w.np_count[0], &w.np_count[numranks], 0);
                    cout << numranks - numEmpty << " of " << numranks << 
                    " ranks found members within cutout field of view" << endl;
                 }

@@ -19,6 +19,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <vector>
+#include <sys/time.h>
 
 // source files
 #include "util.h"
@@ -142,9 +143,8 @@ int main( int argc, char** argv ) {
     }
     struct stat info;
     if( stat( out_dir.c_str(), &info ) != 0 ){
-        ostringstream badOut;
-        badOut << "Cannot access specified output directory " << out_dir;
-        throw runtime_error( badOut.str() );
+        cout << "\nCannot access specified output directory " << out_dir;
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
     if(rank == 0){ cout << "using lightcone at "; } 
@@ -188,20 +188,24 @@ int main( int argc, char** argv ) {
             (find(args.begin(), args.end(), "--boxLength") != args.end()));
 
     // there are two general use cases of this cutout code, as described in the 
-    // docstring below the declaration of this main function. Here, exceptons are 
-    // thrown to prevent confused input arguments which mix those two use cases.
+    // docstring below the declaration of this main function. Here, the program aborts
+    // to prevent confused input arguments which mix those two use cases.
     if( (customHalo || customHaloFile) ^ customBox ){ 
-        throw invalid_argument("-h (or -f) and -b options must accompany eachother");
+        cout << "\n-h (or -f) and -b options must accompany eachother" << endl;
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
     if( customThetaBounds ^ customPhiBounds ){
-        throw invalid_argument("-t and -p options must accompany eachother");
+        cout << "\n-t and -p options must accompany eachother";
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
     if( (customHalo & customThetaBounds) || (customHaloFile & customThetaBounds) ){
-        throw invalid_argument("-t and -p options must not be used in the case " \
-                "that -h (or -f) and -b arguments are passed");
+        cout << "\n-t and -p options must not be used in the case " <<
+                "that -h (or -f) and -b arguments are passed";
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
     if( !customThetaBounds && !customPhiBounds && !customHalo && !customHaloFile && !customBox ){
-        throw invalid_argument("Valid options are -h, -f, -b, -t, and -p");
+        cout << "\nValid options are -h, -f, -b, -t, and -p";
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
     // search argument vector for options, update default parameters if found
@@ -283,11 +287,22 @@ int main( int argc, char** argv ) {
     }
 
     // call overloaded processing function
+
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    double start = t.tv_sec + (double) t.tv_usec/1e6;
+
     if(customHalo || customHaloFile){
         processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, rank, numranks);
     }else{
         processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, rank, numranks);
     }
+    
+    gettimeofday(&t, NULL);
+    double stop = t.tv_sec + (double) t.tv_usec/1e6;
+
+    double duration = stop - start;
+    if(rank == 0){ cout << "\nExecution time: " << duration << " s" << endl; }
 
     MPI_Finalize();
     return 0;

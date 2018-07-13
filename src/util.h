@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <vector>
 #include <omp.h>
+#include <mpi.h>
 
 // Hacc Types
 #define POSVEL_T float

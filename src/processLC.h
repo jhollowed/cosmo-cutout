@@ -22,9 +22,6 @@
 
 #include "util.h"
 
-#define PI 3.14159265
-#define ARCSEC 3600.0
-
 // Generic IO
 #include "GenericIO.h"
 
@@ -34,6 +31,9 @@
 // Hacc Types
 #define POSVEL_T float
 #define ID_T int64_t
+
+#define PI 3.14159265
+#define ARCSEC 3600.0
 
 using namespace std;
 using namespace gio;

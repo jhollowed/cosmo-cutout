@@ -43,9 +43,10 @@ void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &h
    
     // ensure input file is as expected, more or less 
     if(haloPos_strs.size() % 4 != 0){ 
-        throw runtime_error("Each halo position given in input file must " \ 
-                            "have a tag and three components in the space-delimited " \
-                            "form: tag x y z ");
+        cout << "\nEach halo position given in input file must " <<
+                "have an id and three components in the space-delimited " <<
+                "form: tag x y z " << endl;
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
     
     for(int i=0; i<(haloPos_strs.size()/4)*3; ++i){
@@ -141,15 +142,13 @@ int getLCFile(string dir, string &file) {
 
     // enforce exactly one header file found
     if(files.size() == 0){
-        ostringstream noneFoundErr;
-        noneFoundErr << "No valid header files found in dir" << dir;
-        throw runtime_error(noneFoundErr.str()); 
+        cout << "\nNo valid header files found in dir" << dir << endl;
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
     if(files.size() > 1){     
-        ostringstream tooManyErr;
-        tooManyErr << "Too many header files in directory " << dir << 
-                      ". LC Output files should be separated by step-respective subdirectories";
-        throw runtime_error(tooManyErr.str()); 
+        cout << "Too many header files in directory " << dir << 
+                ". LC Output files should be separated by step-respective subdirectories" << endl;
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
     // done
@@ -303,7 +302,8 @@ float zToStep(float z, int totSteps, float maxZ){
 
 
 void sizeMismatch(){ 
-    throw runtime_error("input vectors must have the same length");
+    cout << "\ninput vectors must have the same length" << endl;
+    MPI_Abort(MPI_COMM_WORLD, 0);
 }
 
 
@@ -369,7 +369,8 @@ vector<float> matVecMul(const vector<vector<float> > &matrix, const vector<float
     int rows = matrix.size();
     int cols = matrix[0].size();
     if(vecSize != rows){
-        throw runtime_error("matrix and vector dimensions do not match");
+        cout << "\nmatrix and vector dimensions do not match" << endl;
+        MPI_Abort(MPI_COMM_WORLD, 0);
     }
     
     vector<float> ans(vecSize);
