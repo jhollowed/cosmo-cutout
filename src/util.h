@@ -28,11 +28,75 @@
 
 using namespace std;
 
+
+//////////////////////////////////////////////////////
+
+struct Buffers_read {
+
+    // Buffers to fill with data read from input LC, in processLC.cpp
+    vector<POSVEL_T> x;
+    vector<POSVEL_T> y;
+    vector<POSVEL_T> z;
+    vector<POSVEL_T> vx;
+    vector<POSVEL_T> vy;
+    vector<POSVEL_T> vz;
+    vector<POSVEL_T> a;
+    vector<ID_T> id;
+    vector<int> rotation;
+    vector<int32_t> replication;
+};
+
+struct Buffers_write {
+
+    // Buffers to fill with data to write to cut out in processLC.cpp
+    vector<POSVEL_T> x;
+    vector<POSVEL_T> y;
+    vector<POSVEL_T> z;
+    vector<POSVEL_T> vx;
+    vector<POSVEL_T> vy;
+    vector<POSVEL_T> vz;
+    vector<POSVEL_T> redshift;
+    vector<ID_T> id;
+    vector<int> rotation;
+    vector<int32_t> replication;
+    vector<float> theta;
+    vector<float> phi;
+    
+    // Buffers to fill with MPI file writing offset values
+    vector<int> np_count; // length of output data vecotrs for each rank
+    vector<int> np_offset; // cumulative sum of np_count
+};
+
+struct particle {
+
+    // struct for containing individual particle quantities
+    POSVEL_T x;
+    POSVEL_T y;
+    POSVEL_T z;
+    POSVEL_T vx;
+    POSVEL_T vy;
+    POSVEL_T vz;
+    POSVEL_T a;
+    ID_T id;
+    int rotation;
+    int32_t replication;
+    int rank;
+};
+
+
+//======================================================================================
+
 //////////////////////////////////////////////////////
 //
 //               reading functions
 //
 //////////////////////////////////////////////////////
+
+MPI_Datatype createParticles();
+
+bool comp_rank(const particle &a, const particle &b);
+
+void comp_rank_scatter(int Np, vector<int> &idxRemap, int numranks);
 
 void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloTags);
 

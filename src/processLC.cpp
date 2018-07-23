@@ -3,46 +3,6 @@
 using namespace std;
 using namespace gio;
 
-//////////////////////////////////////////////////////
-
-struct Buffers_read {
-
-    // Buffers to fill with data read from input LC
-    vector<POSVEL_T> x;
-    vector<POSVEL_T> y;
-    vector<POSVEL_T> z;
-    vector<POSVEL_T> vx;
-    vector<POSVEL_T> vy;
-    vector<POSVEL_T> vz;
-    vector<POSVEL_T> a;
-    vector<ID_T> id;
-    vector<int> step;
-    vector<int> rotation;
-    vector<int32_t> replication;
-};
-
-struct Buffers_write {
-
-    // Buffers to fill with data to write out to cut out
-    vector<POSVEL_T> x;
-    vector<POSVEL_T> y;
-    vector<POSVEL_T> z;
-    vector<POSVEL_T> vx;
-    vector<POSVEL_T> vy;
-    vector<POSVEL_T> vz;
-    vector<POSVEL_T> redshift;
-    vector<ID_T> id;
-    vector<int> step;
-    vector<int> rotation;
-    vector<int32_t> replication;
-    vector<float> theta;
-    vector<float> phi;
-    
-    // Buffers to fill with MPI file writing offset values
-    vector<int> np_count; // length of output data vecotrs for each rank
-    vector<int> np_offset; // cumulative sum of np_count
-};
-
 
 //////////////////////////////////////////////////////
 //
@@ -99,9 +59,6 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         // instances of buffer structs at file header
         Buffers_read r;
         Buffers_write w;
-        
-        w.np_count.resize(numranks);
-        w.np_offset.resize(numranks);
 
         // continue if this is the step at z=0 (lightcone volume zero)
         step =atoi(step_strings[i].c_str());
@@ -148,7 +105,6 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
             r.vz.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.a.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.id.resize(Np + GIO.requestedExtraSpace()/sizeof(ID_T));
-            r.step.resize(Np + GIO.requestedExtraSpace()/sizeof(int));
             r.rotation.resize(Np + GIO.requestedExtraSpace()/sizeof(int));
             r.replication.resize(Np + GIO.requestedExtraSpace()/sizeof(int32_t));
 
@@ -160,7 +116,6 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
             GIO.addVariable("vy", r.vy, true); 
             GIO.addVariable("vz", r.vz, true); 
             GIO.addVariable("a", r.a, true); 
-            GIO.addVariable("step", r.step, true); 
             GIO.addVariable("id", r.id, true); 
             GIO.addVariable("rotation", r.rotation, true); 
             GIO.addVariable("replication", r.replication, true);
@@ -177,7 +132,6 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         r.vz.resize(Np);
         r.a.resize(Np);
         r.id.resize(Np);
-        r.step.resize(Np);
         r.rotation.resize(Np);
         r.replication.resize(Np);
         if(rank == 0){ cout<<"done resizing"<<endl; }
@@ -353,15 +307,18 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         w.np_count.clear();
         w.np_offset.clear();
         w.np_offset[0] = 0;
+        
+        w.np_count.resize(numranks);
+
         int cutout_size = int(w.redshift.size());
         
         // get number of elements in each ranks portion of cutout
         MPI_Allgather(&cutout_size, 1, MPI_INT, &w.np_count[0], 1, MPI_INT, 
-                MPI_COMM_WORLD);
+                      MPI_COMM_WORLD);
         
         // compute each ranks writing offset
         for(int j=1; j < numranks; ++j){
-            w.np_offset[j] = w.np_offset[j-1] + w.np_count[j-1];
+            w.np_offset.push_back(w.np_offset[j-1] + w.np_count[j-1]);
         }
         
         // print out offset vector for verification
@@ -778,14 +735,22 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     //
     ///////////////////////////////////////////////////////////////
 
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // perform cutout on data from each lc output step
     size_t max_size = 0;
     int step;
+    MPI_Datatype particles_mpi = createParticles();
+
+    vector<double> redist_times;
+    vector<double> cutout_times; 
+    
     for (int i=0; i<step_strings.size();++i){
     
         // instances of buffer struct at file header for read in data
         Buffers_read r;
+        redist_times.clear();
+        cutout_times.clear();
 
         // continue if this is the step at z=0 (lightcone volume zero)
         step =atoi(step_strings[i].c_str());
@@ -803,6 +768,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         getLCFile(file_name_stream.str(), file_name);
         file_name_stream << "/" << file_name; 
 
+        ///////////////////////////////////////////////////////////////
+        //
+        //                        do reading
+        //
+        ///////////////////////////////////////////////////////////////
+        
         // setup gio
         size_t Np = 0;
         unsigned Method = GenericIO::FileIOPOSIX;
@@ -819,11 +790,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
             MPI_Barrier(MPI_COMM_WORLD);
             Np = GIO.readNumElems();
-            if(rank == 0){
-                cout << "Number of elements in lc step at rank " << rank << ": " << 
-                Np << endl; 
-            }
-
+           
             // resize buffers   
             r.x.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.y.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
@@ -833,7 +800,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             r.vz.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.a.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.id.resize(Np + GIO.requestedExtraSpace()/sizeof(ID_T));
-            r.step.resize(Np + GIO.requestedExtraSpace()/sizeof(int));
             r.rotation.resize(Np + GIO.requestedExtraSpace()/sizeof(int));
             r.replication.resize(Np + GIO.requestedExtraSpace()/sizeof(int32_t));
 
@@ -845,7 +811,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             GIO.addVariable("vy", r.vy, true); 
             GIO.addVariable("vz", r.vz, true); 
             GIO.addVariable("a", r.a, true); 
-            GIO.addVariable("step", r.step, true); 
             GIO.addVariable("id", r.id, true); 
             GIO.addVariable("rotation", r.rotation, true); 
             GIO.addVariable("replication", r.replication, true);
@@ -862,19 +827,135 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         r.vz.resize(Np);
         r.a.resize(Np);
         r.id.resize(Np);
-        r.step.resize(Np);
         r.rotation.resize(Np);
         r.replication.resize(Np);
         if(rank == 0){ cout<<"done resizing"<<endl; }
-
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+         
         ///////////////////////////////////////////////////////////////
         //
-        //           Create output files + start reading
+        //           evenly distribute particles to all ranks
+        //
+        ///////////////////////////////////////////////////////////////
+        
+        // now, we have likely ended up in the situation where most of the data read
+        // resides in only a small subset of the ranks in this communicator. This is becuase
+        // (I think) only a small fraction of the number of ranks that generated the lightcone 
+        // at any particular step intersected that lightcone shell. Tthat information is encoded 
+        // in the lightcone output in the fact that all ranks which found no particles interesecting
+        // the shell created an empty block in the resultant GIO files.
+        // That's no good, because for this cutout code, we don't want some few nodes to be doing 
+        // lots of computation while most others do none, so let's scatter the input data evenly 
+        // across all ranks
+      
+        double start;
+        double stop;
+        MPI_Barrier(MPI_COMM_WORLD);
+        start = MPI_Wtime();
+         
+        // find number of empty ranks
+        vector<size_t> Np_read_per_rank(numranks); 
+        MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_read_per_rank[0], 1, MPI_INT64_T, 
+                      MPI_COMM_WORLD);
+        int num_readNone = count(&Np_read_per_rank[0], &Np_read_per_rank[numranks], 0); 
+        size_t totalNp = 0;
+        for(int ri = 0; ri < numranks; ++ri){
+            totalNp += Np_read_per_rank[ri];
+        }
+        if(rank == 0){
+            cout << "Total number of particles is " << totalNp << endl;
+            cout << "scattering particles to all from " << numranks - num_readNone << 
+                    " of " << numranks << endl;
+        }   
+         
+        vector<int> even_redistribute;
+        vector<int> redist_send_count(numranks);
+        vector<int> redist_recv_count(numranks);
+        vector<int> redist_send_offset(numranks);
+        vector<int> redist_recv_offset(numranks);
+        
+        // compute number of particles to send to each other rank
+        comp_rank_scatter(Np, even_redistribute, numranks);
+        for(int ri = 0; ri < numranks; ++ri){
+            redist_send_count[ri] = count(&even_redistribute[0], &even_redistribute[Np], ri);
+        }
+        
+        // get number of particles to recieve from every other rank
+        MPI_Alltoall(&redist_send_count[0], 1, MPI_INT, &redist_recv_count[0], 1, MPI_INT, MPI_COMM_WORLD);
+
+        // compute sending+recieving offsets to/from each other rank
+        for(int ri=1; ri < numranks; ++ri){
+            redist_send_offset[ri] = redist_send_offset[ri-1] + redist_send_count[ri-1];
+            redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
+        }
+
+        // pack GIO data vectors into particle structs to be distributed by alltoallv
+        // ("particle" struct defined in util.h) 
+        vector<particle> send_particles;
+        vector<particle> recv_particles;
+        
+        for(int n = 0; n < Np; ++n){
+            
+            particle nextParticle = {r.x[n], r.y[n], r.z[n], r.vx[n], r.vy[n], r.vz[n], 
+                                      r.a[n], r.id[n], r.rotation[n], r.replication[n], 
+                                      even_redistribute[n]};
+            send_particles.push_back(nextParticle);
+        }
+
+        recv_particles.resize(redist_recv_offset.back() + redist_recv_count.back());
+
+        // now we need to sort our particle data by it's destination rank. As an example;
+        // if Np = 12 and numranks = 4, then the above call to comp_rank_scatter will result in
+        // even_redistribute = {0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3}, 
+        // which indicates the receiving rank of each particle at position i. In the most recent
+        // loop above, we filled the particle struct "rank" field with the contents of 
+        // redistribute. So, we can sort the particle objects by that field, in order for our
+        // send+offset pair to give the expected result
+        //
+        sort(send_particles.begin(), send_particles.end(), comp_rank);
+
+        // OK, all readt now to redsitribute all particles evely-ish across ranks
+        
+        MPI_Alltoallv(&send_particles[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi,
+                      &recv_particles[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi, 
+                      MPI_COMM_WORLD);
+        
+        // particles now redistributed; find new Np
+ 
+        send_particles.clear();
+        Np = redist_recv_offset.back() + redist_recv_count.back(); 
+         
+        vector<size_t> Np_recv_per_rank(numranks); 
+        MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_recv_per_rank[0], 1, MPI_INT64_T, 
+                      MPI_COMM_WORLD); 
+        totalNp = 0;
+        for(int ri = 0; ri < numranks; ++ri){
+            totalNp += Np_recv_per_rank[ri];
+        }
+        if(rank == 0){
+            cout << "Total number of particles after redistribution is " << totalNp << endl;
+        }   
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        stop = MPI_Wtime();
+    
+        double duration = stop - start;
+        if(rank == 0){ cout << "Redistribution time: " << duration << " s" << endl; }
+        redist_times.push_back(duration);
+        
+        
+        ///////////////////////////////////////////////////////////////
+        //
+        //           Create output files + write buffers
         //
         ///////////////////////////////////////////////////////////////
 
         // loop over all target halos
-        //
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        start = MPI_Wtime();
+        
         for(int h=0; h<halo_pos.size(); h+=3){
             if(rank == 0){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
@@ -883,8 +964,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             
             // instances of buffer struct at file header for output data
             Buffers_write w;
-            w.np_count.resize(numranks);
-            w.np_offset.resize(numranks);
 
             // open cutout subdirectory for this step...
             ostringstream step_subdir;
@@ -1009,14 +1088,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             for (int n=0; n<Np; ++n) {
 
                 // limit cutout to first octant for speed
-                if (r.x[n] > 0.0 && r.y[n] > 0.0 && r.z[n] > 0.0){
+                if (recv_particles[n].x > 0.0 && recv_particles[n].y > 0.0 && recv_particles[n].z > 0.0){
 
                     // spherical coordinate transformation
-                    float d = (float)sqrt( r.x[n]*r.x[n] + 
-                                           r.y[n]*r.y[n] + 
-                                           r.z[n]*r.z[n]);
-                    float theta = acos(r.z[n]/d) * 180.0 / PI * ARCSEC;
-                    float phi = atan(r.y[n]/r.x[n]) * 180.0 / PI * ARCSEC;
+                    float d = (float)sqrt( recv_particles[n].x*recv_particles[n].x + 
+                                           recv_particles[n].y*recv_particles[n].y + 
+                                           recv_particles[n].z*recv_particles[n].z);
+                    float theta = acos(recv_particles[n].z/d) * 180.0 / PI * ARCSEC;
+                    float phi = atan(recv_particles[n].y/recv_particles[n].x) * 180.0 / PI * ARCSEC;
                     
                     // do rough cut first with constant angular bounds
                     if (theta > theta_cut_rough[haloIdx][0] && theta < theta_cut_rough[haloIdx][1] && 
@@ -1075,6 +1154,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     }
                 }
             }
+            MPI_Barrier(MPI_COMM_WORLD);
 
             ///////////////////////////////////////////////////////////////
             //
@@ -1085,10 +1165,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // define MPI file writing offset for the current rank --
             // This offset will be the sum of elements in all lesser ranks,
             // multiplied by the type size for each file    
-            MPI_Barrier(MPI_COMM_WORLD);
             w.np_count.clear();
             w.np_offset.clear();
-            w.np_offset[0] = 0;
+            w.np_offset.push_back(0);
+            
+            w.np_count.resize(numranks);
+         
             int cutout_size = int(w.redshift.size());
             
             // get number of elements in each ranks portion of cutout
@@ -1097,7 +1179,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             
             // compute each ranks writing offset
             for(int j=1; j < numranks; ++j){
-                w.np_offset[j] = w.np_offset[j-1] + w.np_count[j-1];
+                w.np_offset.push_back(w.np_offset[j-1] + w.np_count[j-1]);
             }
            
             // print out offset vector for verification
@@ -1191,5 +1273,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File_close(&rotation_file);
             MPI_File_close(&replication_file);
         }
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        stop = MPI_Wtime();
+    
+        double duration = stop - start;
+        if(rank == 0){ cout << "Cutout time: " << duration << " s" << endl; }
+        cutout_times.push_back(duration);
     }
 }

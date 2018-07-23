@@ -2,11 +2,82 @@
 
 using namespace std;
 
+
 //////////////////////////////////////////////////////
 //
 //             reading functions
 //
 //////////////////////////////////////////////////////
+
+
+MPI_Datatype createParticles(){
+    // This function creates and returns an MPI struct type which has a field per 
+    // particle quantity. One particle shall be represented by one "particles_mpi"
+    // object, which is based upon the "particles" struct above
+    //
+    // Params:
+    // :return: a struct of custom MPI type "particles_mpi"
+
+    MPI_Datatype particles_mpi;
+    MPI_Datatype type[11] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
+                             MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
+                             MPI_FLOAT, MPI_INT64_T, MPI_INT, 
+                             MPI_INT32_T, MPI_INT};
+    int blocklen[11] = {1,1,1,1,1,1,1,1,1,1,1};
+    MPI_Aint disp[11] = {
+                         offsetof(particle, x),
+                         offsetof(particle, y),
+                         offsetof(particle, z),
+                         offsetof(particle, vx),
+                         offsetof(particle, vy),
+                         offsetof(particle, vz),
+                         offsetof(particle, a),
+                         offsetof(particle, rotation),
+                         offsetof(particle, replication)
+                        };
+    MPI_Type_struct(11, blocklen, disp, type, &particles_mpi);
+    MPI_Type_commit(&particles_mpi);
+    return particles_mpi;
+}
+
+
+//======================================================================================
+
+
+bool comp_rank(const particle &a, const particle &b){
+    // compare the rank identifiers of two "particle" structs
+    //
+    // Params:
+    // :param a: a particle struct, as defined above
+    // :param b: a particle struct, as defined above
+    // :return: a bool indicating whether or not the identifier of the rank
+    //          possessing a is smaller in value than the identifier of the
+    //          rank posessing b
+
+    return a.rank < b.rank;
+}
+
+
+//======================================================================================
+
+
+void comp_rank_scatter(int Np, vector<int> &idxRemap, int numranks){
+    // Constructs a vector divided into parPerRank chunks sharing a common identifier
+    //
+    // Params:
+    // :param Np: desired length of the constructed vector
+    // :param idxRemap: vector within which to store result
+    // :param numranks: number of unique populations resultant in idxRemap
+    // :return: None
+
+    for(int j = 0; j < Np; ++j){
+        idxRemap.push_back(j % numranks);
+    }
+}
+
+
+//======================================================================================
+
 
 void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloIds){
     // This function reads halo identifiers and positions from an input text file, where 

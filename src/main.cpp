@@ -249,7 +249,7 @@ int main( int argc, char** argv ) {
             DIR *dir = opendir(halo_subdir.str().c_str());
             struct dirent *d;
             int nf = 0; 
-            
+
             // if subdir already exists, make sure it's valid
             if(dir != NULL){
                 while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
@@ -288,20 +288,22 @@ int main( int argc, char** argv ) {
 
     // call overloaded processing function
 
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    double start = t.tv_sec + (double) t.tv_usec/1e6;
+    double start;
+    double stop;
+    MPI_Barrier(MPI_COMM_WORLD);
+    start = MPI_Wtime();
 
     if(customHalo || customHaloFile){
         processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, rank, numranks);
     }else{
         processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, rank, numranks);
     }
-    
-    gettimeofday(&t, NULL);
-    double stop = t.tv_sec + (double) t.tv_usec/1e6;
 
-    double duration = stop - start;
+    MPI_Barrier(MPI_COMM_WORLD);
+    stop = MPI_Wtime();
+    
+
+    duration = stop - start;
     if(rank == 0){ cout << "\nExecution time: " << duration << " s" << endl; }
 
     MPI_Finalize();
