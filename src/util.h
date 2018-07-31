@@ -22,12 +22,11 @@
 #include <omp.h>
 #include <mpi.h>
 
+using namespace std;
+
 // Hacc Types
 #define POSVEL_T float
 #define ID_T int64_t
-
-using namespace std;
-
 
 //////////////////////////////////////////////////////
 
@@ -63,8 +62,8 @@ struct Buffers_write {
     vector<float> phi;
     
     // Buffers to fill with MPI file writing offset values
-    vector<int> np_count; // length of output data vecotrs for each rank
-    vector<int> np_offset; // cumulative sum of np_count
+    vector<size_t> np_count; // length of output data vecotrs for each rank
+    vector<size_t> np_offset; // cumulative sum of np_count
 };
 
 struct particle {
@@ -96,7 +95,7 @@ MPI_Datatype createParticles();
 
 bool comp_rank(const particle &a, const particle &b);
 
-void comp_rank_scatter(int Np, vector<int> &idxRemap, int numranks);
+void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
 
 void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloTags);
 

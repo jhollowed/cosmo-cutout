@@ -742,16 +742,21 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     int step;
     MPI_Datatype particles_mpi = createParticles();
 
+    vector<double> read_times;
     vector<double> redist_times;
     vector<double> cutout_times; 
+    double start;
+    double stop;
+    double duration;
     
     for (int i=0; i<step_strings.size();++i){
     
+        MPI_Barrier(MPI_COMM_WORLD);
+        start = MPI_Wtime();
+        
         // instances of buffer struct at file header for read in data
         Buffers_read r;
-        redist_times.clear();
-        cutout_times.clear();
-
+        
         // continue if this is the step at z=0 (lightcone volume zero)
         step =atoi(step_strings[i].c_str());
         if(step == 499){ continue;}
@@ -832,6 +837,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(rank == 0){ cout<<"done resizing"<<endl; }
         
         MPI_Barrier(MPI_COMM_WORLD);
+        stop = MPI_Wtime();
+    
+        duration = stop - start;
+        if(rank == 0){ cout << "Read time: " << duration << " s" << endl; }
+        read_times.push_back(duration);
          
         ///////////////////////////////////////////////////////////////
         //
@@ -849,8 +859,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // lots of computation while most others do none, so let's scatter the input data evenly 
         // across all ranks
       
-        double start;
-        double stop;
         MPI_Barrier(MPI_COMM_WORLD);
         start = MPI_Wtime();
          
@@ -865,8 +873,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
         if(rank == 0){
             cout << "Total number of particles is " << totalNp << endl;
-            cout << "scattering particles to all from " << numranks - num_readNone << 
-                    " of " << numranks << endl;
+            cout << "Redistributing particles to all from " << numranks - num_readNone << 
+                    " of " << numranks << "ranks" << endl;
         }   
          
         vector<int> even_redistribute;
@@ -915,14 +923,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         //
         sort(send_particles.begin(), send_particles.end(), comp_rank);
 
-        // OK, all readt now to redsitribute all particles evely-ish across ranks
+        // OK, all read, now to redsitribute the particles evely-ish across ranks
         
         MPI_Alltoallv(&send_particles[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi,
                       &recv_particles[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi, 
                       MPI_COMM_WORLD);
         
-        // particles now redistributed; find new Np
- 
+        // particles now redistributed; find new Np to verify all particles accounted for
         send_particles.clear();
         Np = redist_recv_offset.back() + redist_recv_count.back(); 
          
@@ -940,7 +947,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime();
     
-        double duration = stop - start;
+        duration = stop - start;
         if(rank == 0){ cout << "Redistribution time: " << duration << " s" << endl; }
         redist_times.push_back(duration);
         
@@ -1155,7 +1162,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 }
             }
             MPI_Barrier(MPI_COMM_WORLD);
-
+            
             ///////////////////////////////////////////////////////////////
             //
             //                   write out
@@ -1174,7 +1181,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             int cutout_size = int(w.redshift.size());
             
             // get number of elements in each ranks portion of cutout
-            MPI_Allgather(&cutout_size, 1, MPI_INT, &w.np_count[0], 1, MPI_INT, 
+            MPI_Allgather(&cutout_size, 1, MPI_INT64_T, &w.np_count[0], 1, MPI_INT64_T, 
                     MPI_COMM_WORLD);
             
             // compute each ranks writing offset
@@ -1277,8 +1284,32 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime();
     
-        double duration = stop - start;
-        if(rank == 0){ cout << "Cutout time: " << duration << " s" << endl; }
+        duration = stop - start;
+        if(rank == 0){ cout << "cutout + write time: " << duration << " s" << endl; }
         cutout_times.push_back(duration);
+    }
+    
+    if(rank == 0){
+        
+        cout << "\nread_times = np.array([";
+        for(int hh = 0; hh < read_times.size(); ++hh){
+            cout << read_times[hh];
+            if(hh < read_times.size()-1){ cout << ", "; }
+        }
+        cout << "]" << endl;
+        
+        cout << "redist_times = np.array([";
+        for(int hh = 0; hh < redist_times.size(); ++hh){
+            cout << redist_times[hh];
+            if(hh < redist_times.size()-1){ cout << ", "; }
+        }
+        cout << "]" << endl;
+        
+        cout << "cutout_times = np.array([";
+        for(int hh = 0; hh < cutout_times.size(); ++hh){
+            cout << cutout_times[hh];
+            if(hh < cutout_times.size()-1){ cout << ", "; }
+        }
+        cout << "]" << endl;
     }
 }

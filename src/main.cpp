@@ -303,7 +303,7 @@ int main( int argc, char** argv ) {
     stop = MPI_Wtime();
     
 
-    duration = stop - start;
+    double duration = stop - start;
     if(rank == 0){ cout << "\nExecution time: " << duration << " s" << endl; }
 
     MPI_Finalize();

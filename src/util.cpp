@@ -61,7 +61,7 @@ bool comp_rank(const particle &a, const particle &b){
 //======================================================================================
 
 
-void comp_rank_scatter(int Np, vector<int> &idxRemap, int numranks){
+void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
     // Constructs a vector divided into parPerRank chunks sharing a common identifier
     //
     // Params:
