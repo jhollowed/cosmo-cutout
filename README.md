@@ -36,7 +36,8 @@ on Mira/Cetus:
 
 on Cooley:
 ```bash
-+mvapich2
++mvapich2-2.1-intel
++intel-composer-xe-2015
 @default
 ```
 
