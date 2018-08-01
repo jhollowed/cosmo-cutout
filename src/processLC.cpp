@@ -13,7 +13,8 @@ using namespace gio;
 //////////////////////////////////////////////////////
 
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
-        vector<float> theta_cut, vector<float> phi_cut, int rank, int numranks){
+               vector<float> theta_cut, vector<float> phi_cut, int rank, int numranks,
+               bool verbose, bool timeit){
 
     ///////////////////////////////////////////////////////////////
     //
@@ -423,7 +424,8 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 //////////////////////////////////////////////////////
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
-        vector<float> halo_pos, float boxLength, int rank, int numranks){
+               vector<float> halo_pos, float boxLength, int rank, int numranks, 
+               bool verbose, bool timeit){
 
     ///////////////////////////////////////////////////////////////
     //
@@ -521,7 +523,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         phi_cut[haloIdx].push_back( (0 - dphi) * 180.0/PI * ARCSEC );
         phi_cut[haloIdx].push_back( (0 + dphi) * 180.0/PI * ARCSEC );
         
-        if(rank == 0){ 
+        if(rank == 0){
+            cout << "\n--- Target halo ---" << haloIdx << endl; 
             cout << "theta bounds set to: ";
             cout << theta_cut[haloIdx][0]/ARCSEC << "deg -> " << theta_cut[haloIdx][1]/ARCSEC <<"deg"<< endl;
             cout << "phi bounds set to: ";
@@ -557,8 +560,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
         // invert rotation matrix R
         R_inv[haloIdx] = invert_3x3(R[haloIdx]);
-        
-        if(rank == 0){ cout << "\nRotation Matrix is " << endl << 
+         
+        if(rank == 0 and verbose == true){ cout << "\nRotation Matrix is " << endl << 
                        "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
                                R[haloIdx][0][2] << "}" << endl <<
                        "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
@@ -566,7 +569,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                        "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
                                R[haloIdx][2][2] << "}" << endl;
         }
-        if(rank == 0){ cout << "Inverted Rotation Matrix is " << endl << 
+        if(rank == 0 and verbose == true){ cout << "Inverted Rotation Matrix is " << endl << 
                        "{ " << R_inv[haloIdx][0][0] << ", " << R_inv[haloIdx][0][1] << ", " << 
                                R_inv[haloIdx][0][2] << "}" << endl <<
                        "{ " << R_inv[haloIdx][1][0] << ", " << R_inv[haloIdx][1][1] << ", " << 
@@ -631,12 +634,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         C_rot = matVecMul(R_inv[haloIdx], C); 
         D_rot = matVecMul(R_inv[haloIdx], D); 
 
-        if(rank == 0){ cout << "\nRotated cartesian vectors pointing toward FOV corners are" << endl <<
+        if(rank == 0 and verbose == true){ 
+                               cout << "\nRotated cartesian vectors pointing toward FOV corners are" << endl <<
                                "A = {" << A_rot[0] << ", " << A_rot[1] << ", " << A_rot[2] << "}" << endl <<
                                "B = {" << B_rot[0] << ", " << B_rot[1] << ", " << B_rot[2] << "}" << endl <<
                                "C = {" << C_rot[0] << ", " << C_rot[1] << ", " << C_rot[2] << "}" << endl <<
                                "D = {" << D_rot[0] << ", " << D_rot[1] << ", " << D_rot[2] << "}" << endl;
-                     }
+        }
 
         // convert vectors A and B to 2-dimensional spherical coordinate 
         // vectors {theta, phi} in arcsec (C_sph and D_sph are not needed 
@@ -657,7 +661,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         D_sph.push_back( acos(D_rot[2]/1) * 180.0/PI * ARCSEC);
         D_sph.push_back( atan(D_rot[1]/D_rot[0]) * 180.0/PI * ARCSEC);
         
-        if(rank == 0){ cout << "\nAngular positions of the FOV corners in degrees are" << endl <<
+        if(rank == 0 and verbose == true){ 
+                               cout << "\nAngular positions of the FOV corners in degrees are" << endl <<
                                "A = {" << A_sph[haloIdx][0]/ARCSEC << ", " << A_sph[haloIdx][1]/ARCSEC <<
                                           "}" << endl <<
                                "B = {" << B_sph[haloIdx][0]/ARCSEC << ", " << B_sph[haloIdx][1]/ARCSEC <<
@@ -666,7 +671,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                           "}" << endl <<
                                "D = {" << D_sph[0]/ARCSEC << ", " << D_sph[1]/ARCSEC <<
                                           "}" << endl;
-                     }
+        }
 
         // define rough-cut bounds, in arcsec, to be used to quickly remove particles that certainly 
         // are not inthe field of view. After a cut is done in this way, we can treat the remaining 
@@ -840,7 +845,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         stop = MPI_Wtime();
     
         duration = stop - start;
-        if(rank == 0){ cout << "Read time: " << duration << " s" << endl; }
+        if(rank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
         read_times.push_back(duration);
          
         ///////////////////////////////////////////////////////////////
@@ -874,7 +879,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(rank == 0){
             cout << "Total number of particles is " << totalNp << endl;
             cout << "Redistributing particles to all from " << numranks - num_readNone << 
-                    " of " << numranks << "ranks" << endl;
+                    " of " << numranks << " ranks" << endl;
         }   
          
         vector<int> even_redistribute;
@@ -948,7 +953,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         stop = MPI_Wtime();
     
         duration = stop - start;
-        if(rank == 0){ cout << "Redistribution time: " << duration << " s" << endl; }
+        if(rank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
         redist_times.push_back(duration);
         
         
@@ -1051,7 +1056,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             theta_file_name << step_subdir.str() << "/theta." << step << ".bin";
             phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
-            if(rank == 0){ cout<<"starting to open files"<<endl; }
+            if(rank == 0){ cout<<"opening output files"<<endl; }
 
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
@@ -1077,8 +1082,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(phi_file_name.str().c_str()),
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
-
-            if(rank == 0){ cout<<"done opening files"<<endl; }
             
             ///////////////////////////////////////////////////////////////
             //
@@ -1086,7 +1089,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             //
             ///////////////////////////////////////////////////////////////
 
-            if(rank == 0){ cout << "Converting positions..." << endl; }
+            if(rank == 0){ cout << "converting positions..." << endl; }
             
             // define vectors joining fov corners to particle (see comments/diagram above)
             vector<float> AM(2);
@@ -1285,11 +1288,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         stop = MPI_Wtime();
     
         duration = stop - start;
-        if(rank == 0){ cout << "cutout + write time: " << duration << " s" << endl; }
+        if(rank == 0 and timeit == true){ cout << "cutout + write time: " << duration << " s" << endl; }
         cutout_times.push_back(duration);
     }
     
-    if(rank == 0){
+    if(rank == 0 and timeit == true){
         
         cout << "\nread_times = np.array([";
         for(int hh = 0; hh < read_times.size(); ++hh){

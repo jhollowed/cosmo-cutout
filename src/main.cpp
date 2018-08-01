@@ -147,8 +147,8 @@ int main( int argc, char** argv ) {
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
-    if(rank == 0){ cout << "using lightcone at "; } 
-    if(rank == 0){ cout << input_lc_dir << endl; }
+    if(rank == 0){ cout << "Using lightcone at ";  
+                   cout << input_lc_dir << endl; }
 
     // build step_strings vector by locating the step present in the lightcone
     // data directory that is nearest the redshift requested by the user
@@ -162,7 +162,7 @@ int main( int argc, char** argv ) {
     if(rank == 0){ 
         cout << "MAX STEP: " << maxStep << endl;
         cout << "MIN STEP: " << minStep << endl;
-        cout << "steps to include from z= " << minZ << " to z=" << maxZ << ": ";
+        cout << "steps to include from z= " << minZ << " to z=" << maxZ << ": " << endl;
         for(int i=0; i<step_strings.size(); ++i){ cout << step_strings[i] << " ";}
         cout << endl;
     }
@@ -173,6 +173,8 @@ int main( int argc, char** argv ) {
     vector<float> haloPos;
     vector<string> haloIds;
     float boxLength;
+    bool verbose = false;
+    bool timeit = false;
 
     // check that supplied arguments are valid
     vector<string> args(argv+1, argv + argc);
@@ -204,7 +206,7 @@ int main( int argc, char** argv ) {
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
     if( !customThetaBounds && !customPhiBounds && !customHalo && !customHaloFile && !customBox ){
-        cout << "\nValid options are -h, -f, -b, -t, and -p";
+        cout << "\nValid options are -h, -f, -b, -t, -p, -v, and --timeit. See github readme for help";
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
@@ -235,6 +237,12 @@ int main( int argc, char** argv ) {
         }
         else if (strcmp(argv[i],"-b")==0 || strcmp(argv[i],"--boxLength")==0){
             boxLength = strtof(argv[++i], NULL);
+        }
+        else if (strcmp(argv[i],"-v")==0 || strcmp(argv[i],"--verbose")==0){
+            verbose = true;
+        }
+        else if (strcmp(argv[i],"--timeit")){
+            timeit = true;
         }
     }
     
@@ -271,13 +279,17 @@ int main( int argc, char** argv ) {
     // print summary 
     if(rank == 0){
         if(customHalo || customHaloFile){
-            cout << endl << haloPos.size()/3 << " target halo(s): " << endl;
-            for(int k=0; k<haloIds.size(); ++k){
-                cout << "Halo " << haloIds[k] << ": " << endl;
-                for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[k+i] << " ";}
-                cout << endl;
+            cout << endl << haloPos.size()/3 << " target halo(s) will be cut out of the lightcone";
+            
+            if(verbose == true){
+                cout << ":" << endl;
+                for(int k=0; k<haloIds.size(); ++k){
+                    cout << "Halo " << haloIds[k] << ": " << endl;
+                    for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[k+i] << " ";}
+                }
             }
-            cout << "box length: " << boxLength << " Mpc" << endl;
+            cout << endl << "box length: " << boxLength << " Mpc" << endl;
+        
         }else{
             cout << "theta bounds: ";
             cout << theta_cut[0]/ARCSEC << " -> " << theta_cut[1]/ARCSEC <<" deg"<< endl;
@@ -294,9 +306,9 @@ int main( int argc, char** argv ) {
     start = MPI_Wtime();
 
     if(customHalo || customHaloFile){
-        processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, rank, numranks);
+        processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, rank, numranks, verbose, timeit);
     }else{
-        processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, rank, numranks);
+        processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, rank, numranks, verbose, timeit);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -304,7 +316,7 @@ int main( int argc, char** argv ) {
     
 
     double duration = stop - start;
-    if(rank == 0){ cout << "\nExecution time: " << duration << " s" << endl; }
+    if(rank == 0 and timeit == true){ cout << "\nExecution time: " << duration << " s" << endl; }
 
     MPI_Finalize();
     return 0;
