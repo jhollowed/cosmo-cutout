@@ -597,7 +597,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         //          |__ boxLength                  A
         //
       
-        // get theta dn phi bounds in radians 
+        // get theta and phi bounds in radians 
         vector<float> theta_cut_rad;
         theta_cut_rad.push_back( (theta_cut[haloIdx][0] / ARCSEC) * PI/180.0); 
         theta_cut_rad.push_back( (theta_cut[haloIdx][1] / ARCSEC) * PI/180.0); 
@@ -707,10 +707,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         //    _____________ C __________
         //    |           >--_          |
         //    |         _-    -_        | <--- "rough cut" constant angular bounds as
-        //    |    BC _-        -_      |       defined above. only particles left over 
-        //    |     _-            -_    |       in the inner triangles (interior to the 
-        //    |   _-    ___-->M     -_  |       rough cut, exterior to the actual fov)
-        //    B _-___---BM   ^        -_|       will be treated more carefully, as below
+        //    |    BC _-        -_      |       defined above. only particles within these
+        //    |     _-            -_    |       bounds will be treated more carefully, as 
+        //    |   _-    ___-->M     -_  |       below
+        //    B _-___---BM   ^        -_|
         //    | ^-_          |       _- |
         //    |    -_       |AM    _-   |
         //    |      -_     |    _-     | 
@@ -872,10 +872,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_read_per_rank[0], 1, MPI_INT64_T, 
                       MPI_COMM_WORLD);
         int num_readNone = count(&Np_read_per_rank[0], &Np_read_per_rank[numranks], 0); 
+        
+        // and number of total particles per rank with data
         size_t totalNp = 0;
         for(int ri = 0; ri < numranks; ++ri){
             totalNp += Np_read_per_rank[ri];
         }
+
         if(rank == 0){
             cout << "Total number of particles is " << totalNp << endl;
             cout << "Redistributing particles to all from " << numranks - num_readNone << 
@@ -925,7 +928,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // loop above, we filled the particle struct "rank" field with the contents of 
         // redistribute. So, we can sort the particle objects by that field, in order for our
         // send+offset pair to give the expected result
-        //
+        
         sort(send_particles.begin(), send_particles.end(), comp_rank);
 
         // OK, all read, now to redsitribute the particles evely-ish across ranks
@@ -940,13 +943,16 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
          
         vector<size_t> Np_recv_per_rank(numranks); 
         MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_recv_per_rank[0], 1, MPI_INT64_T, 
-                      MPI_COMM_WORLD); 
+                      MPI_COMM_WORLD);
+        int avg_Np_recv_per_rank = (int)accumulate(Np_recv_per_rank.begin(), Np_recv_per_rank.end(), 0.0)/numranks;
+
         totalNp = 0;
         for(int ri = 0; ri < numranks; ++ri){
             totalNp += Np_recv_per_rank[ri];
         }
         if(rank == 0){
-            cout << "Total number of particles after redistribution is " << totalNp << endl;
+            cout << "Total number of particles after redistribution is " << totalNp << " (about " << 
+                    avg_Np_recv_per_rank << " particles per rank)" << endl;
         }   
 
         MPI_Barrier(MPI_COMM_WORLD);

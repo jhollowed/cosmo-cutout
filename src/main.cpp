@@ -314,7 +314,6 @@ int main( int argc, char** argv ) {
     MPI_Barrier(MPI_COMM_WORLD);
     stop = MPI_Wtime();
     
-
     double duration = stop - start;
     if(rank == 0 and timeit == true){ cout << "\nExecution time: " << duration << " s" << endl; }
 
