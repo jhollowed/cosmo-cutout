@@ -294,6 +294,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
                 }
             }
         }
+        MPI_Barrier(MPI_COMM_WORLD);
 
         ///////////////////////////////////////////////////////////////
         //
@@ -304,12 +305,11 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         // define MPI file writing offset for the current rank --
         // This offset will be the sum of elements in all lesser ranks,
         // multiplied by the type size for each file    
-        MPI_Barrier(MPI_COMM_WORLD);
         w.np_count.clear();
+        w.np_count.resize(numranks);
         w.np_offset.clear();
         w.np_offset[0] = 0;
         
-        w.np_count.resize(numranks);
 
         int cutout_size = int(w.redshift.size());
         
@@ -524,7 +524,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         phi_cut[haloIdx].push_back( (0 + dphi) * 180.0/PI * ARCSEC );
         
         if(rank == 0){
-            cout << "\n--- Target halo ---" << haloIdx << endl; 
+            cout << "\n--- Target halo " << haloIdx << " ---" << endl; 
             cout << "theta bounds set to: ";
             cout << theta_cut[haloIdx][0]/ARCSEC << "deg -> " << theta_cut[haloIdx][1]/ARCSEC <<"deg"<< endl;
             cout << "phi bounds set to: ";
@@ -730,7 +730,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         fov_BC[haloIdx].push_back( C_sph[1] - B_sph[haloIdx][1] );
         fov_dotBC[haloIdx] = dot(fov_BC[haloIdx], fov_BC[haloIdx]);
 
-        if(rank == 0){ cout << "\nFound FOV vectors AB and BC" << endl; }
+        if(rank == 0 and verbose == true){ cout << "\nFound FOV vectors AB and BC" << endl; }
 
     }
 
@@ -1097,6 +1097,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
             if(rank == 0){ cout << "converting positions..." << endl; }
             
+            int cutout_size = 0;
+            
             // define vectors joining fov corners to particle (see comments/diagram above)
             vector<float> AM(2);
             vector<float> BM(2);
@@ -1166,6 +1168,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             w.id.push_back(r.id[n]);
                             w.rotation.push_back(r.rotation[n]);
                             w.replication.push_back(r.replication[n]);
+                            cutout_size++;
                         }
                     }
                 }
@@ -1182,21 +1185,19 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // This offset will be the sum of elements in all lesser ranks,
             // multiplied by the type size for each file    
             w.np_count.clear();
+            w.np_count.resize(numranks);
             w.np_offset.clear();
             w.np_offset.push_back(0);
-            
-            w.np_count.resize(numranks);
-         
-            int cutout_size = int(w.redshift.size());
-            
-            // get number of elements in each ranks portion of cutout
-            MPI_Allgather(&cutout_size, 1, MPI_INT64_T, &w.np_count[0], 1, MPI_INT64_T, 
-                    MPI_COMM_WORLD);
+
+            // get number of elements in each ranks portion of cutout 
+            MPI_Allgather(&cutout_size, 1, MPI_INT, 
+                          &w.np_count[0], 1, MPI_INT, MPI_COMM_WORLD);
             
             // compute each ranks writing offset
             for(int j=1; j < numranks; ++j){
                 w.np_offset.push_back(w.np_offset[j-1] + w.np_count[j-1]);
             }
+            MPI_Barrier(MPI_COMM_WORLD); 
            
             // print out offset vector for verification
             if(rank == 0){

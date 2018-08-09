@@ -62,8 +62,8 @@ struct Buffers_write {
     vector<float> phi;
     
     // Buffers to fill with MPI file writing offset values
-    vector<size_t> np_count; // length of output data vecotrs for each rank
-    vector<size_t> np_offset; // cumulative sum of np_count
+    vector<int> np_count; // length of output data vecotrs for each rank
+    vector<int> np_offset; // cumulative sum of np_count
 };
 
 struct particle {

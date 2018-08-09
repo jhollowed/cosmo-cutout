@@ -32,8 +32,10 @@ MPI_Datatype createParticles(){
                          offsetof(particle, vy),
                          offsetof(particle, vz),
                          offsetof(particle, a),
+                         offsetof(particle, id),
                          offsetof(particle, rotation),
-                         offsetof(particle, replication)
+                         offsetof(particle, replication),
+                         offsetof(particle, rank)
                         };
     MPI_Type_struct(11, blocklen, disp, type, &particles_mpi);
     MPI_Type_commit(&particles_mpi);

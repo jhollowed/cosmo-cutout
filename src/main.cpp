@@ -241,11 +241,11 @@ int main( int argc, char** argv ) {
         else if (strcmp(argv[i],"-v")==0 || strcmp(argv[i],"--verbose")==0){
             verbose = true;
         }
-        else if (strcmp(argv[i],"--timeit")){
+        else if (strcmp(argv[i],"--timeit") == 0){
             timeit = true;
         }
     }
-    
+
     // if customHaloFile == true, then create an output subdirectory per halo in out_dir
     vector<string> halo_out_dirs;
     if(customHaloFile){
