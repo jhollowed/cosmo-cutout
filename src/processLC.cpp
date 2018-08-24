@@ -926,7 +926,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // even_redistribute = {0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3}, 
         // which indicates the receiving rank of each particle at position i. In the most recent
         // loop above, we filled the particle struct "rank" field with the contents of 
-        // redistribute. So, we can sort the particle objects by that field, in order for our
+        // even_redistribute. So, we can sort the particle objects by that field, in order for our
         // send+offset pair to give the expected result
         
         sort(send_particles.begin(), send_particles.end(), comp_rank);
@@ -1139,7 +1139,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             // do coordinate rotation center halo at (r, 90, 0)
                             // B and k are the angle and axis of rotation, respectively,
                             // calculated near the beginning of this function
-                            float tmp_v[] = {r.x[n], r.y[n], r.z[n]};
+                            float tmp_v[] = {recv_particles[n].x, recv_particles[n].y, recv_particles[n].z};
                             vector<float> v(tmp_v, tmp_v+3);
                             vector<float> v_rot;
                             v_rot = matVecMul(R[haloIdx], v);
@@ -1151,24 +1151,35 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             float v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
                         
                             // get redshift from scale factor
-                            float zz = aToZ(r.a[n]);  
+                            float zz = aToZ(recv_particles[n].a);  
                             
                             // spherical corrdinate transform of rotated positions
                             w.theta.push_back(v_theta);
                             w.phi.push_back(v_phi);
 
                             // other columns
-                            w.x.push_back(r.x[n]);
-                            w.y.push_back(r.y[n]);
-                            w.z.push_back(r.z[n]);
-                            w.vx.push_back(r.vx[n]);
-                            w.vy.push_back(r.vy[n]);
-                            w.vz.push_back(r.vz[n]);
+                            w.x.push_back(recv_particles[n].x);
+                            w.y.push_back(recv_particles[n].y);
+                            w.z.push_back(recv_particles[n].z);
+                            w.vx.push_back(recv_particles[n].vx);
+                            w.vy.push_back(recv_particles[n].vy);
+                            w.vz.push_back(recv_particles[n].vz);
                             w.redshift.push_back(zz);
-                            w.id.push_back(r.id[n]);
-                            w.rotation.push_back(r.rotation[n]);
-                            w.replication.push_back(r.replication[n]);
+                            w.id.push_back(recv_particles[n].id);
+                            w.rotation.push_back(recv_particles[n].rotation);
+                            w.replication.push_back(recv_particles[n].replication);
                             cutout_size++;
+
+                            if(rank == 1){
+                                cout << endl << "Particle " << recv_particles[n].id << ":   " << endl << 
+                                "x: " << recv_particles[n].x << endl << 
+                                "y: " << recv_particles[n].y << endl << 
+                                "z: " << recv_particles[n].z << endl <<
+                                "a: " << recv_particles[n].a << endl <<
+                                "rs: " << zz << endl <<
+                                "theta: " << v_theta << endl << 
+                                "phi: " << v_phi << endl; 
+                            }
                         }
                     }
                 }
