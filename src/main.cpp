@@ -148,7 +148,9 @@ int main( int argc, char** argv ) {
     }
 
     if(rank == 0){ cout << "Using lightcone at ";  
-                   cout << input_lc_dir << endl; }
+                   cout << input_lc_dir << endl;
+                   cout << "Writing at ";
+                   cout << out_dir << endl;}
 
     // build step_strings vector by locating the step present in the lightcone
     // data directory that is nearest the redshift requested by the user
