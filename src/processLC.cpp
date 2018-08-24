@@ -1170,6 +1170,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             w.replication.push_back(recv_particles[n].replication);
                             cutout_size++;
 
+                            /*
                             if(rank == 1){
                                 cout << endl << "Particle " << recv_particles[n].id << ":   " << endl << 
                                 "x: " << recv_particles[n].x << endl << 
@@ -1180,6 +1181,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                 "theta: " << v_theta << endl << 
                                 "phi: " << v_phi << endl; 
                             }
+                            */
                         }
                     }
                 }
