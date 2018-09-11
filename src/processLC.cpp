@@ -1178,6 +1178,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             cutout_size++;
 
                             /*
+                            // DEBUG
+                            // print out individual particle info
+
                             if(rank == 1){
                                 cout << endl << "Particle " << recv_particles[n].id << ":   " << endl << 
                                 "x: " << recv_particles[n].x << endl << 
