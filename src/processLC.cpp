@@ -750,12 +750,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     vector<double> read_times;
     vector<double> redist_times;
     vector<double> cutout_times; 
+    vector<double> write_times; 
     double start;
     double stop;
     double duration;
     
     for (int i=0; i<step_strings.size();++i){
-    
+   
+        // time read in 
         MPI_Barrier(MPI_COMM_WORLD);
         start = MPI_Wtime();
         
@@ -863,7 +865,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // That's no good, because for this cutout code, we don't want some few nodes to be doing 
         // lots of computation while most others do none, so let's scatter the input data evenly 
         // across all ranks
-      
+     
+        // time redistribution 
         MPI_Barrier(MPI_COMM_WORLD);
         start = MPI_Wtime();
          
@@ -970,10 +973,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         ///////////////////////////////////////////////////////////////
 
         // loop over all target halos
-        
+       
+        // time cutout computation 
         MPI_Barrier(MPI_COMM_WORLD);
         start = MPI_Wtime();
-        
+ 
         for(int h=0; h<halo_pos.size(); h+=3){
             if(rank == 0){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
@@ -1094,6 +1098,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             //                         Do cutting
             //
             ///////////////////////////////////////////////////////////////
+        
+            // let's also time the computation per-rank
+            clock_t thisRank_start = clock();
 
             if(rank == 0){ cout << "converting positions..." << endl; }
             
@@ -1118,7 +1125,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // do rough cut first with constant angular bounds
                     if (theta > theta_cut_rough[haloIdx][0] && theta < theta_cut_rough[haloIdx][1] && 
                             phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
-                    
+                     
                         // update M, AM, and BM (see comments/diagram above)
                         AM[0] = theta - A_sph[haloIdx][0];
                         AM[1] = phi - A_sph[haloIdx][1];
@@ -1188,11 +1195,60 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             }
             MPI_Barrier(MPI_COMM_WORLD);
             
+            stop = MPI_Wtime();
+            duration = stop - start;
+            if(rank == 0 and timeit == true){ cout << "cutout computation time: " << duration << " s" << endl; }
+            cutout_times.push_back(duration);
+            
+            if(verbose == true and timeit == true){
+                
+                // check load balancing (all ranks should have taken more or less the same amount of time here)
+                clock_t thisRank_end = clock();
+                clock_t thisRank_time = thisRank_end - thisRank_start;
+                double thisRank_secs = thisRank_time / (double) CLOCKS_PER_SEC;
+                vector<double> allRank_secs(numranks);
+                
+                MPI_Allgather(&thisRank_secs, 1, MPI_DOUBLE, 
+                              &allRank_secs[0], 1, MPI_DOUBLE, MPI_COMM_WORLD);
+     
+                if(rank == 0){
+                    double min_compTime = 9999;
+                    double max_compTime = 0;
+                    double mean_compTime;
+                    double sq_compTime;
+                    double std_compTime;
+
+                    cout << "allRank_secs: [";
+                    for(int cc = 0; cc < numranks; ++cc){
+                        cout << allRank_secs[cc] << ", ";
+                    }
+                    cout << endl;        
+
+                    for(int cc = 0; cc < numranks; ++cc){
+                        if(allRank_secs[cc] < min_compTime){ min_compTime = allRank_secs[cc];}
+                        if(allRank_secs[cc] > max_compTime){ max_compTime = allRank_secs[cc];}
+                    }
+
+                    mean_compTime = accumulate(allRank_secs.begin(), allRank_secs.end(), 0.0) / allRank_secs.size();
+                    sq_compTime = inner_product(allRank_secs.begin(), allRank_secs.end(), allRank_secs.begin(), 0.0);
+                    std_compTime = sqrt(sq_compTime / allRank_secs.size() - mean_compTime * mean_compTime);
+
+                    cout << "Min rank computation time: " << min_compTime << " s" << endl; 
+                    cout << "Max rank computation time: " << max_compTime << " s" << endl; 
+                    cout << "Mean rank computation time: " << mean_compTime << " s" << endl; 
+                    cout << "Std dev rank computation time: " << std_compTime << " s" << endl; 
+                }
+            }
+
             ///////////////////////////////////////////////////////////////
             //
             //                   write out
             //
             ///////////////////////////////////////////////////////////////
+       
+            // time write out 
+            MPI_Barrier(MPI_COMM_WORLD);
+            start = MPI_Wtime();
 
             // define MPI file writing offset for the current rank --
             // This offset will be the sum of elements in all lesser ranks,
@@ -1302,14 +1358,15 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File_close(&phi_file);
             MPI_File_close(&rotation_file);
             MPI_File_close(&replication_file);
+        
+            MPI_Barrier(MPI_COMM_WORLD);
+            stop = MPI_Wtime();
+        
+            duration = stop - start;
+            if(rank == 0 and timeit == true){ cout << "write time: " << duration << " s" << endl; }
+            write_times.push_back(duration);
         }
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        stop = MPI_Wtime();
-    
-        duration = stop - start;
-        if(rank == 0 and timeit == true){ cout << "cutout + write time: " << duration << " s" << endl; }
-        cutout_times.push_back(duration);
     }
     
     if(rank == 0 and timeit == true){
@@ -1332,6 +1389,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         for(int hh = 0; hh < cutout_times.size(); ++hh){
             cout << cutout_times[hh];
             if(hh < cutout_times.size()-1){ cout << ", "; }
+        }
+        cout << "]" << endl;
+        
+        cout << "write_times = np.array([";
+        for(int hh = 0; hh < write_times.size(); ++hh){
+            cout << write_times[hh];
+            if(hh < write_times.size()-1){ cout << ", "; }
         }
         cout << "]" << endl;
     }
