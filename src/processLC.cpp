@@ -442,6 +442,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         for (vector<string>::const_iterator i = subdirs.begin(); i != subdirs.end(); ++i){
             cout << *i << ' ';
         }
+        cout << endl;
     }
 
     // find the prefix (chars before the step number) in the subdirectory names.

@@ -269,8 +269,8 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
     //                      nearby steps present in the output are 299 and 301, 
     //                      299 will be the minimum step written to step_strings). And, 
     //                      if no step exists that satisfies step > maxStep, then return
-    //                      the smallest step that satisfies tep < maxStep (symmetric 
-    //                      what was just described above for the higher redshift end)
+    //                      the smallest step that satisfies step < maxStep (symmetric 
+    //                      to what was just described above for the higher redshift end)
     // :return: none
 
     // find all lc step subdirs
@@ -296,7 +296,7 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
     for(int k=0; k<stepsAvail.size(); ++k){
 
         if(hitMaxStep==0){
-            if(stepsAvail[ stepsAvail.size() - (k+1) ] < maxStep){
+            if(stepsAvail[ stepsAvail.size() - (k+1) ] < maxStep and maxStep != 487){
                 hitMaxStep = 1;
             }
             continue;
