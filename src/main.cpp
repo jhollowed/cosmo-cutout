@@ -115,6 +115,19 @@ int main( int argc, char** argv ) {
     // Note that the first use case describe does not perform the coordinate 
     // rotation which is described in the second. So, cutouts returned will
     // not necessarily be square, or symmetrical.
+    //
+    // Additional flags that can be passed are:
+    //
+    // --verbose: lots more output, useful for debugging
+    // --timeit: reading, redistribution, computation, and write out will all be
+    //           timed with MPI wall time, and reported in output
+    // --overwrite: if write-out directories are not empty (there are binary files
+    //              present there from a previous cutout run), then overwrite the
+    //              contents rather than stopping execution with an error. If anything
+    //              other than binary files are found in the directory, then an error
+    //              is still raised and nothing is deleted.
+    // 
+    // All three of these additional options default to false
 
     // start MPI 
     MPI_Init(&argc, &argv);
@@ -177,6 +190,7 @@ int main( int argc, char** argv ) {
     float boxLength;
     bool verbose = false;
     bool timeit = false;
+    bool overwrite = false;
 
     // check that supplied arguments are valid
     vector<string> args(argv+1, argv + argc);
@@ -246,6 +260,9 @@ int main( int argc, char** argv ) {
         else if (strcmp(argv[i],"--timeit") == 0){
             timeit = true;
         }
+        else if (strcmp(argv[i],"--overwrite") == 0){
+            overwrite = true;
+        }
     }
 
     // if customHaloFile == true, then create an output subdirectory per halo in out_dir
@@ -308,9 +325,11 @@ int main( int argc, char** argv ) {
     start = MPI_Wtime();
 
     if(customHalo || customHaloFile){
-        processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, rank, numranks, verbose, timeit);
+        processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, 
+                  rank, numranks, verbose, timeit, overwrite);
     }else{
-        processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, rank, numranks, verbose, timeit);
+        processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, 
+                  rank, numranks, verbose, timeit, overwrite);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

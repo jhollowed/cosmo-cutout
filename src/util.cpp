@@ -292,11 +292,12 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
     // function header)
     sort(stepsAvail.begin(), stepsAvail.end());
     int hitMaxStep = 0;
+    if(maxStep > 487){ hitMaxStep = 1;}
      
     for(int k=0; k<stepsAvail.size(); ++k){
 
         if(hitMaxStep==0){
-            if(stepsAvail[ stepsAvail.size() - (k+1) ] < maxStep and maxStep != 487){
+            if(stepsAvail[ stepsAvail.size() - (k+1) ] < maxStep){
                 hitMaxStep = 1;
             }
             continue;

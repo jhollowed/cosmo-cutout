@@ -14,7 +14,7 @@ using namespace gio;
 
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
                vector<float> theta_cut, vector<float> phi_cut, int rank, int numranks,
-               bool verbose, bool timeit){
+               bool verbose, bool timeit, bool overwrite){
 
     ///////////////////////////////////////////////////////////////
     //
@@ -425,7 +425,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
                vector<float> halo_pos, float boxLength, int rank, int numranks, 
-               bool verbose, bool timeit){
+               bool verbose, bool timeit, bool overwrite){
 
     ///////////////////////////////////////////////////////////////
     //
@@ -994,22 +994,62 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             
             DIR *dir = opendir(step_subdir.str().c_str());
             struct dirent *d;
+            char full_path[256];
+            char *ext;
             int nf = 0;
-            
+            vector<string> files_to_remove;
+
             // if subdir already exists, make sure it's empty, because overwriting
-            // binary files isn't always clean. Only have rank 0 do this.
+            // binary files isn't always clean. If 'overwrite' is true, the delete 
+            // all binary files in the subdir and continue. 
+            // Only have rank 0 do this.
             if(rank == 0){
                 if(dir != NULL){
                     while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
-                    closedir(dir);
 
-                    if(nf > 2){
+                    // not empty; abort
+                    if(nf > 2 and overwrite == false){
+                        closedir(dir);
                         cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
                         MPI_Abort(MPI_COMM_WORLD, 0);
                     }
-                    cout << "Entered subdir: " << step_subdir.str() << endl;
+
+                    // not empty; overwrite
+                    else if(nf > 2 and overwrite == true){
+                        cout << "\nDirectory " << step_subdir.str() << " is non-empty";
+                        cout << " and --overwrite flag was passed; removing binary files here" << endl;
+                        while( (d = readdir(dir)) != NULL){
+                            
+                            // just to be safe
+                            if (0==strcmp(d->d_name, ".") || 
+                                0==strcmp(d->d_name, "..")) { continue; }
+
+                            sprintf(full_path, "%s%s%s", step_subdir.str().c_str(), "/", d->d_name);
+                            ext = strrchr(d->d_name, '.');
+
+                            // make sure directory only contains binary files
+                            if( strcmp(ext, ".bin") != 0){
+                                cout << "\nDirectory contains non-cutout files! Maybe passed wrong path?" << endl;
+                                MPI_Abort(MPI_COMM_WORLD, 0);
+                            }
+                            files_to_remove.push_back(full_path);
+                        }
+
+                        for(int l = 0; l < files_to_remove.size(); ++l){
+                            if(verbose == true){ cout << "\nDELETING " << files_to_remove[l] << endl; }
+                            remove(files_to_remove[l].c_str());
+                        }
+                        closedir(dir);
+                    }
+
+                    // empty but exists; do nothing
+                    else{
+                        closedir(dir);
+                        cout << "Entered subdir: " << step_subdir.str() << endl;
+                    }
                 }
-                // Otherwise, create the subdir
+                
+                // doesn't exist; create the subdir
                 else{
                     mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
                     cout << "Created subdir: " << step_subdir.str() << endl;
