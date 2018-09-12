@@ -997,22 +997,25 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             int nf = 0;
             
             // if subdir already exists, make sure it's empty, because overwriting
-            // binary files isn't always clean
-            if(dir != NULL){
-                while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
-                closedir(dir);
+            // binary files isn't always clean. Only have rank 0 do this.
+            if(rank == 0){
+                if(dir != NULL){
+                    while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
+                    closedir(dir);
 
-                if(nf > 2){
-                    cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
-                    MPI_Abort(MPI_COMM_WORLD, 0);
+                    if(nf > 2){
+                        cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
+                        MPI_Abort(MPI_COMM_WORLD, 0);
+                    }
+                    cout << "Entered subdir: " << step_subdir.str() << endl;
                 }
-                if(rank == 0){ cout << "Entered subdir: " << step_subdir.str() << endl; }
+                // Otherwise, create the subdir
+                else{
+                    mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
+                    cout << "Created subdir: " << step_subdir.str() << endl;
+                }
             }
-            // Otherwise, create the subdir
-            else{
-                mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-                if(rank == 0){ cout << "Created subdir: " << step_subdir.str() << endl; }
-            }
+            MPI_Barrier(MPI_COMM_WORLD);
 
             // create binary files for cutout output
             MPI_File id_file;
