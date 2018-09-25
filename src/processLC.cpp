@@ -491,14 +491,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     vector<vector<float> > theta_cut_rough(numHalos);
     vector<vector<float> > phi_cut_rough(numHalos);
 
-    // field of view boundary vectors per halo
-    vector<vector<float> > A_sph(numHalos);
-    vector<vector<float> > B_sph(numHalos);
-    vector<vector<float> > fov_AB(numHalos);
-    vector<float> fov_dotAB(numHalos);
-    vector<vector<float> > fov_BC(numHalos);
-    vector<float> fov_dotBC(numHalos);
-
     for(int h=0; h<halo_pos.size(); h+=3){ 
         
         int haloIdx = h/3;
@@ -539,7 +531,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         
         // Now let's rotate the angular bounds to their true position in the sky
         // Using the Rodrigues rotation formula...
-
         float tmp_rot_pos[] = {halo_r, 0, 0};
         vector<float> rotated_pos(tmp_rot_pos, tmp_rot_pos+3);
         if(rank == 0){ cout << "\nFinding axis of rotation to move (" << 
@@ -550,7 +541,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // get angle and axis of rotation
         normCross(this_halo_pos, rotated_pos, k[haloIdx]);
         B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
-
         if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "deg about axis k = (" << 
                        k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl;
         }
@@ -562,6 +552,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // invert rotation matrix R
         R_inv[haloIdx] = invert_3x3(R[haloIdx]);
          
+        // verbose output
         if(rank == 0 and verbose == true){ cout << "\nRotation Matrix is " << endl << 
                        "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
                                R[haloIdx][0][2] << "}" << endl <<
@@ -643,16 +634,16 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                "D = {" << D_rot[0] << ", " << D_rot[1] << ", " << D_rot[2] << "}" << endl;
         }
 
-        // convert vectors A and B to 2-dimensional spherical coordinate 
-        // vectors {theta, phi} in arcsec (C_sph and D_sph are not needed 
-        // later in the per-particle calculation, so just redefine 
-        // them here for each input halo)
+        // convert vectors A,B,C,D to 2-dimensional spherical coordinate 
+        // vectors {theta, phi} in arcsec
         
-        A_sph[haloIdx].push_back( acos(A_rot[2]/1) * 180.0/PI * ARCSEC);
-        A_sph[haloIdx].push_back( atan(A_rot[1]/A_rot[0]) * 180.0/PI * ARCSEC);
+        vector<float> A_sph;
+        A_sph.push_back( acos(A_rot[2]/1) * 180.0/PI * ARCSEC);
+        A_sph.push_back( atan(A_rot[1]/A_rot[0]) * 180.0/PI * ARCSEC);
         
-        B_sph[haloIdx].push_back( acos(B_rot[2]/1) * 180.0/PI * ARCSEC);
-        B_sph[haloIdx].push_back( atan(B_rot[1]/B_rot[0]) * 180.0/PI * ARCSEC);
+        vector<float> B_sph;
+        B_sph.push_back( acos(B_rot[2]/1) * 180.0/PI * ARCSEC);
+        B_sph.push_back( atan(B_rot[1]/B_rot[0]) * 180.0/PI * ARCSEC);
         
         vector<float> C_sph;
         C_sph.push_back( acos(C_rot[2]/1) * 180.0/PI * ARCSEC);
@@ -664,9 +655,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         
         if(rank == 0 and verbose == true){ 
                                cout << "\nAngular positions of the FOV corners in degrees are" << endl <<
-                               "A = {" << A_sph[haloIdx][0]/ARCSEC << ", " << A_sph[haloIdx][1]/ARCSEC <<
+                               "A = {" << A_sph[0]/ARCSEC << ", " << A_sph[1]/ARCSEC <<
                                           "}" << endl <<
-                               "B = {" << B_sph[haloIdx][0]/ARCSEC << ", " << B_sph[haloIdx][1]/ARCSEC <<
+                               "B = {" << B_sph[0]/ARCSEC << ", " << B_sph[1]/ARCSEC <<
                                           "}" << endl <<
                                "C = {" << C_sph[0]/ARCSEC << ", " << C_sph[1]/ARCSEC <<
                                           "}" << endl <<
@@ -675,18 +666,22 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
 
         // define rough-cut bounds, in arcsec, to be used to quickly remove particles that certainly 
-        // are not inthe field of view. After a cut is done in this way, we can treat the remaining 
-        // particles more carefully
-       
-        float tmp_thetas[] = {A_sph[haloIdx][0], B_sph[haloIdx][0], C_sph[0], D_sph[0]};
+        // are not in the field of view. After a cut is done in this way, we can treat the remaining 
+        // particles more carefully. We do this by simply cutting on the max and min theta and phi 
+        // values among the vectors A,B,and C, with a buffer of constant size 10 arcmin (where typical
+        // cluster cutouts at modest redshifts come out to have a width of order 1 degree)
+
+        float ang_buffer = 600; // buffer in arcsec
+
+        float tmp_thetas[] = {A_sph[0], B_sph[0], C_sph[0], D_sph[0]};
         vector<float> theta_corners(tmp_thetas, tmp_thetas+4);
-        theta_cut_rough[haloIdx].push_back( *min_element(theta_corners.begin(), theta_corners.end()) );
-        theta_cut_rough[haloIdx].push_back( *max_element(theta_corners.begin(), theta_corners.end()) ); 
+        theta_cut_rough[haloIdx].push_back( *min_element(theta_corners.begin(), theta_corners.end()) + ang_buffer );
+        theta_cut_rough[haloIdx].push_back( *max_element(theta_corners.begin(), theta_corners.end()) + ang_buffer ); 
         
-        float tmp_phis[] = {A_sph[haloIdx][1], B_sph[haloIdx][1], C_sph[1], D_sph[1]};
+        float tmp_phis[] = {A_sph[1], B_sph[1], C_sph[1], D_sph[1]};
         vector<float> phi_corners(tmp_phis, tmp_phis+4);
-        phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) );
-        phi_cut_rough[haloIdx].push_back( *max_element(phi_corners.begin(), phi_corners.end()) ); 
+        phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) + ang_buffer );
+        phi_cut_rough[haloIdx].push_back( *max_element(phi_corners.begin(), phi_corners.end()) + ang_buffer ); 
         
         if(rank == 0){
             cout << "\nrough theta bounds set to: ";
@@ -695,44 +690,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             cout << "rough phi bounds set to: ";
             cout << phi_cut_rough[haloIdx][0]/ARCSEC << "deg -> " << 
                     phi_cut_rough[haloIdx][1]/ARCSEC <<"deg" << endl;
-        }
-           
-        // with the positions of the corners of the rotated fov in hand, we can 
-        // set up facilities for asking the question, "does point M lie within the 
-        // field of view?" I do this using vector projections; after converting to 
-        // spherical coordinates, two vectors are defined joining the three vertices 
-        // declared above (vectors AB and BC). Two more vectors will later be defined, 
-        // per-particle, directed from coreners A and B to the point of interest, M, 
-        // (vectors AM and BM) as such:
-        //     
-        //    _____________ C __________
-        //    |           >--_          |
-        //    |         _-    -_        | <--- "rough cut" constant angular bounds as
-        //    |    BC _-        -_      |       defined above. only particles within these
-        //    |     _-            -_    |       bounds will be treated more carefully, as 
-        //    |   _-    ___-->M     -_  |       below
-        //    B _-___---BM   ^        -_|
-        //    | ^-_          |       _- |
-        //    |    -_       |AM    _-   |
-        //    |      -_     |    _-     | 
-        //    |    AB  -_  |   _-       | 
-        //    |          -_| _-         |
-        //    |___________ --__________ |
-        //                  A
-        //
-        // M is then found inside the field of view iff 0 <= dot(AB, AM) <= dot(AB,AB) &&
-        //                                              0 <= dot(BC,BM) <= dot(BC,BC)
-
-        fov_AB[haloIdx].push_back( B_sph[haloIdx][0] - A_sph[haloIdx][0] );
-        fov_AB[haloIdx].push_back( B_sph[haloIdx][1] - A_sph[haloIdx][1] );
-        fov_dotAB[haloIdx] = dot(fov_AB[haloIdx], fov_AB[haloIdx]);
-         
-        fov_BC[haloIdx].push_back( C_sph[0] - B_sph[haloIdx][0] );
-        fov_BC[haloIdx].push_back( C_sph[1] - B_sph[haloIdx][1] );
-        fov_dotBC[haloIdx] = dot(fov_BC[haloIdx], fov_BC[haloIdx]);
-
-        if(rank == 0 and verbose == true){ cout << "\nFound FOV vectors AB and BC" << endl; }
-
+        }       
     }
 
     ///////////////////////////////////////////////////////////////
@@ -1164,43 +1122,50 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                            recv_particles[n].y*recv_particles[n].y + 
                                            recv_particles[n].z*recv_particles[n].z);
                     float theta = acos(recv_particles[n].z/d) * 180.0 / PI * ARCSEC;
-                    float phi = atan(recv_particles[n].y/recv_particles[n].x) * 180.0 / PI * ARCSEC;
+                    float phi;
+                    
+                    // prevent NaNs on y-z plane
+                    if(recv_particles[n].x == 0 && recv_particles[n].y > 0)
+                        phi = 90.0 * ARCSEC;
+                    else if(recv_particles[n].x == 0 && recv_particles[n].y < 0)
+                        phi = -90.0 * ARCSEC;
+                    else
+                        phi = atan(recv_particles[n].y/recv_particles[n].x) * 180.0 / PI * ARCSEC;
                     
                     // do rough cut first with constant angular bounds
                     if (theta > theta_cut_rough[haloIdx][0] && theta < theta_cut_rough[haloIdx][1] && 
-                            phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
+                        phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
                      
-                        // update M, AM, and BM (see comments/diagram above)
-                        AM[0] = theta - A_sph[haloIdx][0];
-                        AM[1] = phi - A_sph[haloIdx][1];
-                        BM[0] = theta - B_sph[haloIdx][0];
-                        BM[1] = phi - B_sph[haloIdx][1];
-
-                        float dotABAM = dot(fov_AB[haloIdx], AM);
-                        float dotBCBM = dot(fov_BC[haloIdx], BM);
-
-                        // do final cut using projection method (see comments.diagrams above)
-                        if ( (0 <= dotABAM && dotABAM <= fov_dotAB[haloIdx]) &&
-                             (0 <= dotBCBM && dotBCBM <= fov_dotBC[haloIdx]) ){
-
-                            // Finally, these are the correct particles within the cutout. 
-                            // Let's do a proper rotation on them now, since we want to
-                            // return cluster-centric angular coordinates
-                            
-                            // do coordinate rotation center halo at (r, 90, 0)
-                            // B and k are the angle and axis of rotation, respectively,
-                            // calculated near the beginning of this function
-                            float tmp_v[] = {recv_particles[n].x, recv_particles[n].y, recv_particles[n].z};
-                            vector<float> v(tmp_v, tmp_v+3);
-                            vector<float> v_rot;
-                            v_rot = matVecMul(R[haloIdx], v);
-
-                            // spherical coordinate transformation
-                            d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
-                                            v_rot[2]*v_rot[2]);
-                            float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
-                            float v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
+                        // of the particles surviving the rough cut, let's do a proper rotation 
+                        // on them to find the true cutout memership, and return cluster-centric 
+                        // angular coordinates
                         
+                        // do coordinate rotation center halo at (r, 90, 0)
+                        // B and k are the angle and axis of rotation, respectively,
+                        // calculated near the beginning of this function
+                        float tmp_v[] = {recv_particles[n].x, recv_particles[n].y, recv_particles[n].z};
+                        vector<float> v(tmp_v, tmp_v+3);
+                        vector<float> v_rot;
+                        v_rot = matVecMul(R[haloIdx], v);
+
+                        // spherical coordinate transformation
+                        d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
+                                        v_rot[2]*v_rot[2]);
+                        float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
+                        float v_phi;
+
+                        // prevent NaNs on y-z plane
+                        if(v_rot[0] == 0 && v_rot[1] > 0)
+                            v_phi = 90.0 * ARCSEC;
+                        else if(v_rot[0] == 0 && v_rot[1] < 0)
+                            v_phi = -90.0 * ARCSEC;
+                        else
+                            v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
+                     
+                        // do final cut
+                        if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
+                            v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
+    
                             // get redshift from scale factor
                             float zz = aToZ(recv_particles[n].a);  
                             
