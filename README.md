@@ -157,7 +157,7 @@ The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLe
 </summary>
 <p>
 
-In making general lightone cutouts around specific objects, a coordinate rotation is required. This is because the bounding functions which define the field of view of the observer, if they are described in constant angular terms, are in general nonlinear in Cartesian space (meaning the field of view will not appear square from the observer position). This distortion is maximized near the poles of the spherical coordinate system, and minimized at the equator, as long as the small-angle approximation holds for the size of the cutout. Areas defined by constant  *&#x03B8;* - *&#x03D5;* bounds, then, appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
+In making general lightcone cutouts around specific objects, a coordinate rotation is required. This is because the bounding functions which define the field of view of the observer, if they are described in constant angular terms, are in general nonlinear in Cartesian space (meaning the field of view will not appear square from the observer position). This distortion is maximized near the poles of the spherical coordinate system, and minimized at the equator, as long as the small-angle approximation holds for the size of the cutout. Areas defined by constant  *&#x03B8;* - *&#x03D5;* bounds, then, appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
 
 * FFT restrictions of flat-sky lensing codes often require that the cutout is square
 * The cutouts returned will not actually have all side lengths of `boxLength` if we don't do this rotation, which the user explicitly requested
@@ -218,15 +218,15 @@ where **R** is the rotation matrix through an angle *&#x03B2;* about the axis **
 
 So for each target halo, **k**, *&#x03B2;*, and **R** are each computed once, and **v**<sub>rot</sub> is computed for each object (e.g. simulation particle), from the input lightcone, that should fill the resultant cutout. If we'd like to cut out *M* target halos from a particular lightcone, and have *N* particles filling that lightcone, then that means computing **v**<sub>rot</sub> *M*\**N* times, which may be a very large number. For efficiency, then, we follow this procedure (gorey details found in code comments):
 
-1. Define the geometry of the cutout at the equator of our spherical coordinate system/on the *x*-axis of the base simulation's cartesian coordiante system. This means that *d&#x03B8;* = *d&#x03D5;* = tan<sup>-1</sup>(*B*/2*r*<sub>0</sub>), where *B* is the `--boxLength` argument.
+1. Define the geometry of the cutout at the equator of our spherical coordinate system/on the *x*-axis of the base simulation's cartesian coordinate system. This means that *d&#x03B8;* = *d&#x03D5;* = tan<sup>-1</sup>(*B*/2*r*<sub>0</sub>), where *B* is the `--boxLength` argument.
 
 2. Define the vectors pointing to the four corners of the square bounded by *d&#x03B8;* and *d&#x03D5;* as **A**, **B**, **C**, and **D**.
 
 3. Move the square field of view to the position of the target halo by inverting the rotation matrix:<br>**A**<sub>rot</sub> = **R**<sup>-1</sup>**A**<br>and similarly for **B**, **C**, and **D**. 
 
-4. Make an "initial guess" around the field of view by doing a cut in constant *&#x03B8;* and *&#x03D5;* bounds, given by the maximum and minmum angular coordinates of **A**, **B**, **C**, and **D**. Add a 10 arcmin buffer.
+4. Make an "initial guess" around the field of view by doing a cut in constant *&#x03B8;* and *&#x03D5;* bounds, given by the maximum and minimum angular coordinates of **A**, **B**, **C**, and **D**. Add a 10 arcmin buffer.
 
-5. For all lightcone objects (e.g. particles) surviving this inital cut, perform the proper rotation **v**<sub>rot</sub> = **Rv**. This number of objects will surely be &#x226A;*N*
+5. For all lightcone objects (e.g. particles) surviving this initial cut, perform the proper rotation **v**<sub>rot</sub> = **Rv**. This number of objects will surely be &#x226A;*N*
 
 If the 5 steps above don't make much sense, please let me know (contact info below) and perhaps I can put together an explanatory animation.
 
