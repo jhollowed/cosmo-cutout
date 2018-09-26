@@ -125,7 +125,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift` - See description above  
   * `x_0`, `y_0`, `z_0` - The comoving Cartesian position, in Mpc/h, of the object on which to center the cutout  
-  * `box length` - the width of the fov around the object of interest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8*, as defined above, is tan<sup>-1</sup>(*B*/2*r*), where *r* is *r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>)  
+  * `box length` - the width of the fov around the object of interest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8;*, as defined above, is tan<sup>-1</sup>(*B*/2*r*), where *r* is *r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>)  
 
 The `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`.
 
@@ -152,8 +152,11 @@ In this example, the first object has an id of `123456789`, and position *x*=`50
 
 The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `-b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
 
-
-<details><summary>Click here to expand details on how exactly the cutout computation is done for Use Case 2</summary>
+<details><summary>
+```diff
++ Click here to expand details on how exactly the cutout computation is done for Use Case 2
+```
+</summary>
 <p>
 
 We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of interest (which we will from now on assume is a halo) lies on the equator at
