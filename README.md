@@ -125,7 +125,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift` - See description above  
   * `x_0`, `y_0`, `z_0` - The comoving Cartesian position, in Mpc/h, of the object on which to center the cutout  
-  * `box length` - the width of the fov around the object of interest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8;*, as defined above, is tan<sup>-1</sup>(*B*/2*r*), where *r* is *r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>)  
+  * `box length` - the width of the fov around the object of interest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8;*, as defined above, is tan<sup>-1</sup>(*B*/2*r*<sub>0</sub>), where *r*<sub>0</sub> is *r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>)  
 
 The `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`.
 
@@ -153,50 +153,89 @@ In this example, the first object has an id of `123456789`, and position *x*=`50
 The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `-b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
 
 <details><summary>
-```diff
-+ Click here to expand details on how exactly the cutout computation is done for Use Case 2
-```
+<b><i>Click here to expand details on how exactly the cutout computation is done for Use Case 2</i></b>
 </summary>
 <p>
 
-We want to express the positions of  all of our lightcone objects in spherical coordinates, to perform the cutout, and we want that coordinate system to be rotated such that the object of interest (which we will from now on assume is a halo) lies on the equator at
+In making general lightone cutouts around specific objects, a coordinate rotation is required. This is because the bounding functions which define the field of view of the observer, if they are described in constant angular terms, are in general nonlinear in Cartesian space (meaning the field of view will not appear square from the observer position). This distortion is maximized near the poles of the spherical coordinate system, and minimized at the equator, as long as the small-angle approximation holds for the size of the cutout. Areas defined by constant  *&#x03B8;* - *&#x03D5;* bounds, then, appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
 
-(*r*, 90&#x00B0;, 0&#x00B0;)
+* FFT restrictions of flat-sky lensing codes often require that the cutout is square
+* The cutouts returned will not actually have all side lengths of `boxLength` if we don't do this rotation, which the user explicitly requested
+
+We want to express the positions of  all of our target lightcone objects in spherical coordinates, to perform the cutouts. Considering a single one of those objects; we want that coordinate system to be rotated such that the object of interest (which we will from now on assume is a halo) lies on the equator at
+
+<p align="center">
+(<i>r</i>, <i>&#x03B8;</i>, <i>&#x03D5;</i>) = (<i>r</i><sub>0</sub>, 90&#x00B0;, 0&#x00B0;)
+</p>
 
 where 
 
-*r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>
+<p align="center">
+<i>r</i><sub>0</sub> = (<i>x</i><sub><i>0</i></sub><sup>2</sup> + <i>y</i><sub><i>0</i></sub><sup>2</sup> + <i>z</i><sub><i>0</i></sub><sup>2</sup>)<sup>1/2</sup>.
+</p>
 
 Let's call the position vector of the halo before this rotation 
 
-**a** = [*x&#x2080;*, *y&#x2080;*, *z&#x2080;*], 
+<p align="center">
+<b>a</b> = [<i>x&#x2080;<i>, </i>y&#x2080;<i>, </i>z&#x2080;</i>], 
+</p>
 
 and after,
 
- **b** = [*x*<sub>rot</sub>, *y*<sub>rot</sub>, *z*<sub>rot</sub>] = [*r*, 0, 0]
+<p align="center">
+ <b>b</b> = [<i>x</i><sub>rot</sub>, <i>y</i><sub>rot</sub>, <i>z</i><sub>rot</sub>] = [<i>r</i><sub>0</sub>, 0, 0]
+</p>
 
-We perform this rotation for each lightcone object via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation *&#x03B2;*, what is an analytical form for a new vector **v**<sub>rot</sub> which is **v** rotated by an angle *&#x03B2;* about **k**?
+We perform this rotation for the target halo via the *Rodrigues rotation formula*, which answers the following question: given a position vector **v**, a normalized axis of rotation **k**, and an angle of rotation *&#x03B2;*, what is an analytical form for a new vector **v**<sub>rot</sub> which is **v** rotated by an angle *&#x03B2;* about **k**?
 
 First, we find **k** by taking the cross product of two vectors defining the 
 plane of rotation. The obvious choice of these two vectors are **a** and **b**, as 
 defined above;
 
-k = (**a** &#x2A2F; **b**) / &#x2016;**a** &#x2A2F; **b**&#x2016;
+<p align="center">
+<b>k</b> = (<b>a</b> &#x2A2F; <b>b</b>) / &#x2016;<b>a</b> &#x2A2F; <b>b</b>&#x2016;
+</p>
 
 then, for any other position vector **v**, **v**<sub>rot</sub> is given by
 
-**v**<sub>rot</sub> = **v**cos*&#x03B2;* + (**k** &#x2A2F; **v**)sin*&#x03B2;* + **k**(**k** &#x22C5; **v**)(1-cos*&#x03B2;*)
+<p align="center">
+<b>v</b><sub>rot</sub> = <b>Rv</b>
+</p>
 
-This coordinate rotation is required because the bounding functions which define the field of view of the observer, while constant in theta-phi space, are nonlinear in Cartesian space. The distortion is maximized near the poles of the spherical coordinate system, and minimized at the equator. Areas defined by constant theta-phi bounds then appear trapezoidal to the observer when far from the equator. It is important that our cutout areas are maintained as square for at least two reasons:
+where **R** is the rotation matrix through an angle *&#x03B2;* about the axis **k**, given as 
 
-* At the moment, FFT restrictions of flat-sky lensing code require that the cutout is square
-* The cutouts returned will not actually have all side lengths of `boxLength` if we don't do this rotation, which the user explicitly requested
+<p align="center">
+<b>R</b> = <b>I</b> + sin(<i>&#x03B2;</i>)<b>K</b> + (1-cos(<i>&#x03B2;</i>))<b>K</b><sup>2</sup>.
+</p>
+
+**I**, here, is the 3x3 identity matrix, and **K** is the "cross-product matrix" for the unit vector **k**:
+
+<p align="center">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x2308;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;-<i>k</i><sub><i>z</i></sub>&nbsp;&nbsp;&nbsp;&nbsp;<i>k</i><sub><i>y</i></sub>&nbsp;&nbsp;&#x2309;<br>&nbsp;&nbsp;
+<b>K</b>&nbsp;=&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<i>k</i><sub><i>z</i></sub>&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;-<i>k</i><sub><i>x</i></sub>&nbsp;&nbsp;&nbsp;|&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#x230A;&nbsp;&nbsp;-<i>k</i><sub><i>y</i></sub>&nbsp;&nbsp;&nbsp;&nbsp;<i>k</i><sub><i>z</i></sub>&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&#x230b;<br>
+</p>
+
+So for each target halo, **k**, *&#x03B2;*, and **R** are each computed once, and **v**<sub>rot</sub> is computed for each object (e.g. simulation particle), from the input lightcone, that should fill the resultant cutout. If we'd like to cut out *M* target halos from a particular lightcone, and have *N* particles filling that lightcone, then that means computing **v**<sub>rot</sub> *M*\**N* times, which may be a very large number. For efficiency, then, we follow this procedure (gorey details found in code comments):
+
+1. Define the geometry of the cutout at the equator of our spherical coordinate system/on the *x*-axis of the base simulation's cartesian coordiante system. This means that *d&#x03B8;* = *d&#x03D5;* = tan<sup>-1</sup>(*B*/2*r*<sub>0</sub>), where *B* is the `--boxLength` argument.
+
+2. Define the vectors pointing to the four corners of the square bounded by *d&#x03B8;* and *d&#x03D5;* as **A**, **B**, **C**, and **D**.
+
+3. Move the square field of view to the position of the target halo by inverting the rotation matrix:<br>**A**<sub>rot</sub> = **R**<sup>-1</sup>**A**<br>and similarly for **B**, **C**, and **D**. 
+
+4. Make an "initial guess" around the field of view by doing a cut in constant *&#x03B8;* and *&#x03D5;* bounds, given by the maximum and minmum angular coordinates of **A**, **B**, **C**, and **D**. Add a 10 arcmin buffer.
+
+5. For all lightcone objects (e.g. particles) surviving this inital cut, perform the proper rotation **v**<sub>rot</sub> = **Rv**. This number of objects will surely be &#x226A;*N*
+
+If the 5 steps above don't make much sense, please let me know (contact info below) and perhaps I can put together an explanatory animation.
+
 </p>
 </details>
 
 ## Caveats
 
-* Note that the Use Case 1 does not perform the coordinate rotation which is described in Use Case 2 (under the "click here to expand" details). So, cutouts returned will not necessarily be square, or symmetrical, if far from the coordinate equator.
+* Note that the Use Case 1 does not perform the coordinate rotation which is described in Use Case 2 (under the "click here to expand" details). So, cutouts returned will not necessarily be square, or symmetrical, if far from the coordinate equator. Even given Use Case 2, cutouts will not necessarily be square (though they should always be symmetrical) if the opening angle of the cutout breaks the small-angle approximation.
 
 * The parallelism in this application occurs *spatially*, not temporally. That is, the lightcone *volume* is decomposed across MPI ranks, which prallelizes the read in, computation, and write-out. But there is no parallelism in *redshift*-space, meaning that each lightcone "step" (portion of the lightcone volume originating from a particular simulation snapshot) are treated in serial. Further, if option `-f` is used as described under Use Case 2, then those multiple requested cutouts are also treated serially. 
 
