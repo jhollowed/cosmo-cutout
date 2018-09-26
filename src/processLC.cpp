@@ -675,12 +675,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
         float tmp_thetas[] = {A_sph[0], B_sph[0], C_sph[0], D_sph[0]};
         vector<float> theta_corners(tmp_thetas, tmp_thetas+4);
-        theta_cut_rough[haloIdx].push_back( *min_element(theta_corners.begin(), theta_corners.end()) + ang_buffer );
+        theta_cut_rough[haloIdx].push_back( *min_element(theta_corners.begin(), theta_corners.end()) - ang_buffer );
         theta_cut_rough[haloIdx].push_back( *max_element(theta_corners.begin(), theta_corners.end()) + ang_buffer ); 
         
         float tmp_phis[] = {A_sph[1], B_sph[1], C_sph[1], D_sph[1]};
         vector<float> phi_corners(tmp_phis, tmp_phis+4);
-        phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) + ang_buffer );
+        phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) - ang_buffer );
         phi_cut_rough[haloIdx].push_back( *max_element(phi_corners.begin(), phi_corners.end()) + ang_buffer ); 
         
         if(rank == 0){
