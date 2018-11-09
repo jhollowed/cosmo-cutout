@@ -66,17 +66,23 @@ struct Buffers_write {
     vector<int> np_offset; // cumulative sum of np_count
 };
 
-struct particle {
+struct particle_pos {
 
-    // struct for containing individual particle quantities
+    // struct for containing individual "primary" particle quantities
     POSVEL_T x;
     POSVEL_T y;
     POSVEL_T z;
+    POSVEL_T a;
+    ID_T id;
+    int rank;
+};
+
+struct particle_vel {
+
+    // struct for containing individual "secondary" particle quantities
     POSVEL_T vx;
     POSVEL_T vy;
     POSVEL_T vz;
-    POSVEL_T a;
-    ID_T id;
     int rotation;
     int32_t replication;
     int rank;
@@ -85,15 +91,30 @@ struct particle {
 
 //======================================================================================
 
+
 //////////////////////////////////////////////////////
 //
 //               reading functions
 //
 //////////////////////////////////////////////////////
 
-MPI_Datatype createParticles();
+MPI_Datatype createParticles_pos();
+MPI_Datatype createParticles_vel();
 
-bool comp_rank(const particle &a, const particle &b);
+template<typename T>
+bool comp_rank(const T &a, const T &b){
+    // compare the rank fields of two structs. Type T should be either a
+    // particle_pos or particle_vel
+    //
+    // Params:
+    // :param a: a particle struct, as defined in util.h
+    // :param b: a particle struct, as defined in util.h
+    // :return: a bool indicating whether or not the identifier of the rank
+    //          possessing a is smaller in value than the identifier of the
+    //          rank posessing b
+
+    return a.rank < b.rank;
+}
 
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
 

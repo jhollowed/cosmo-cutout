@@ -14,7 +14,7 @@ using namespace gio;
 
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
                vector<float> theta_cut, vector<float> phi_cut, int rank, int numranks,
-               bool verbose, bool timeit, bool overwrite){
+               bool verbose, bool timeit, bool overwrite, bool positionOnly){
 
     ///////////////////////////////////////////////////////////////
     //
@@ -425,7 +425,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
                vector<float> halo_pos, float boxLength, int rank, int numranks, 
-               bool verbose, bool timeit, bool overwrite){
+               bool verbose, bool timeit, bool overwrite, bool positionOnly){
 
     ///////////////////////////////////////////////////////////////
     //
@@ -704,7 +704,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     // perform cutout on data from each lc output step
     size_t max_size = 0;
     int step;
-    MPI_Datatype particles_mpi = createParticles();
+ 
+    MPI_Datatype particles_mpi_pos = createParticles_pos();
+    MPI_Datatype particles_mpi_vel = createParticles_vel();
 
     vector<double> read_times;
     vector<double> redist_times;
@@ -766,25 +768,29 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             r.x.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.y.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.z.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-            r.vx.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-            r.vy.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-            r.vz.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.a.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
             r.id.resize(Np + GIO.requestedExtraSpace()/sizeof(ID_T));
-            r.rotation.resize(Np + GIO.requestedExtraSpace()/sizeof(int));
-            r.replication.resize(Np + GIO.requestedExtraSpace()/sizeof(int32_t));
+            if(!positionOnly){
+                r.vx.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
+                r.vy.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
+                r.vz.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
+                r.rotation.resize(Np + GIO.requestedExtraSpace()/sizeof(int));
+                r.replication.resize(Np + GIO.requestedExtraSpace()/sizeof(int32_t));
+            }
 
             // do reading
             GIO.addVariable("x", r.x, true); 
             GIO.addVariable("y", r.y, true); 
             GIO.addVariable("z", r.z, true); 
-            GIO.addVariable("vx", r.vx, true); 
-            GIO.addVariable("vy", r.vy, true); 
-            GIO.addVariable("vz", r.vz, true); 
             GIO.addVariable("a", r.a, true); 
             GIO.addVariable("id", r.id, true); 
-            GIO.addVariable("rotation", r.rotation, true); 
-            GIO.addVariable("replication", r.replication, true);
+            if(!positionOnly){
+                GIO.addVariable("vx", r.vx, true); 
+                GIO.addVariable("vy", r.vy, true); 
+                GIO.addVariable("vz", r.vz, true); 
+                GIO.addVariable("rotation", r.rotation, true); 
+                GIO.addVariable("replication", r.replication, true);
+            }
 
             GIO.readData(); 
         }
@@ -793,13 +799,15 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         r.x.resize(Np);
         r.y.resize(Np);
         r.z.resize(Np);
-        r.vx.resize(Np);
-        r.vy.resize(Np);
-        r.vz.resize(Np);
         r.a.resize(Np);
         r.id.resize(Np);
-        r.rotation.resize(Np);
-        r.replication.resize(Np);
+        if(!positionOnly){
+            r.vx.resize(Np);
+            r.vy.resize(Np);
+            r.vz.resize(Np);
+            r.rotation.resize(Np);
+            r.replication.resize(Np);
+        }
         if(rank == 0){ cout<<"done resizing"<<endl; }
         
         MPI_Barrier(MPI_COMM_WORLD);
@@ -869,19 +877,29 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
 
         // pack GIO data vectors into particle structs to be distributed by alltoallv
-        // ("particle" struct defined in util.h) 
-        vector<particle> send_particles;
-        vector<particle> recv_particles;
-        
+        // ("particle_pos" and "particle_vel" structs defined in util.h) 
+        vector<particle_pos> send_particles_pos;
+        vector<particle_vel> send_particles_vel;
+        vector<particle_pos> recv_particles_pos;
+        vector<particle_vel> recv_particles_vel;
+     
         for(int n = 0; n < Np; ++n){
             
-            particle nextParticle = {r.x[n], r.y[n], r.z[n], r.vx[n], r.vy[n], r.vz[n], 
-                                      r.a[n], r.id[n], r.rotation[n], r.replication[n], 
-                                      even_redistribute[n]};
-            send_particles.push_back(nextParticle);
+            particle_pos nextParticle_pos = {r.x[n], r.y[n], r.z[n], 
+                                             r.a[n], r.id[n], even_redistribute[n]};
+            send_particles_pos.push_back(nextParticle_pos);
+            
+            if(!positionOnly){
+                particle_vel nextParticle_vel = {r.vx[n], r.vy[n], r.vz[n], 
+                                                 r.rotation[n], r.replication[n], 
+                                                 even_redistribute[n]};
+                send_particles_vel.push_back(nextParticle_vel);
+            }
         }
 
-        recv_particles.resize(redist_recv_offset.back() + redist_recv_count.back());
+        recv_particles_pos.resize(redist_recv_offset.back() + redist_recv_count.back());
+        if(!positionOnly)
+            recv_particles_vel.resize(redist_recv_offset.back() + redist_recv_count.back());
 
         // now we need to sort our particle data by it's destination rank. As an example;
         // if Np = 12 and numranks = 4, then the above call to comp_rank_scatter will result in
@@ -889,18 +907,23 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // which indicates the receiving rank of each particle at position i. In the most recent
         // loop above, we filled the particle struct "rank" field with the contents of 
         // even_redistribute. So, we can sort the particle objects by that field, in order for our
-        // send+offset pair to give the expected result
-        
-        sort(send_particles.begin(), send_particles.end(), comp_rank);
+        // send+offset pair to give the expected result 
+        sort(send_particles_pos.begin(), send_particles_pos.end(), comp_rank<particle_pos>);
+        if(!positionOnly)
+            sort(send_particles_vel.begin(), send_particles_vel.end(), comp_rank<particle_vel>);
 
         // OK, all read, now to redsitribute the particles evely-ish across ranks
-        
-        MPI_Alltoallv(&send_particles[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi,
-                      &recv_particles[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi, 
+        MPI_Alltoallv(&send_particles_pos[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi_pos,
+                      &recv_particles_pos[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi_pos, 
                       MPI_COMM_WORLD);
+        if(!positionOnly)
+            MPI_Alltoallv(&send_particles_vel[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi_vel,
+                          &recv_particles_vel[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi_vel, 
+                          MPI_COMM_WORLD);
         
         // particles now redistributed; find new Np to verify all particles accounted for
-        send_particles.clear();
+        send_particles_pos.clear();
+        send_particles_vel.clear();
         Np = redist_recv_offset.back() + redist_recv_count.back(); 
          
         vector<size_t> Np_recv_per_rank(numranks); 
@@ -1078,22 +1101,24 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &y_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(z_file_name.str().c_str()),
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &z_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vx_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vy_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(redshift_file_name.str().c_str()),
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &redshift_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(theta_file_name.str().c_str()),
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(phi_file_name.str().c_str()),
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
+            if(!positionOnly){
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vx_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vy_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
+            }
             
             ///////////////////////////////////////////////////////////////
             //
@@ -1115,22 +1140,24 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             for (int n=0; n<Np; ++n) {
 
                 // limit cutout to first octant for speed
-                if (recv_particles[n].x > 0.0 && recv_particles[n].y > 0.0 && recv_particles[n].z > 0.0){
+                if (recv_particles_pos[n].x > 0.0 && 
+                    recv_particles_pos[n].y > 0.0 && 
+                    recv_particles_pos[n].z > 0.0){
 
                     // spherical coordinate transformation
-                    float d = (float)sqrt( recv_particles[n].x*recv_particles[n].x + 
-                                           recv_particles[n].y*recv_particles[n].y + 
-                                           recv_particles[n].z*recv_particles[n].z);
-                    float theta = acos(recv_particles[n].z/d) * 180.0 / PI * ARCSEC;
+                    float d = (float)sqrt( recv_particles_pos[n].x*recv_particles_pos[n].x + 
+                                           recv_particles_pos[n].y*recv_particles_pos[n].y + 
+                                           recv_particles_pos[n].z*recv_particles_pos[n].z);
+                    float theta = acos(recv_particles_pos[n].z/d) * 180.0 / PI * ARCSEC;
                     float phi;
                     
                     // prevent NaNs on y-z plane
-                    if(recv_particles[n].x == 0 && recv_particles[n].y > 0)
+                    if(recv_particles_pos[n].x == 0 && recv_particles_pos[n].y > 0)
                         phi = 90.0 * ARCSEC;
-                    else if(recv_particles[n].x == 0 && recv_particles[n].y < 0)
+                    else if(recv_particles_pos[n].x == 0 && recv_particles_pos[n].y < 0)
                         phi = -90.0 * ARCSEC;
                     else
-                        phi = atan(recv_particles[n].y/recv_particles[n].x) * 180.0 / PI * ARCSEC;
+                        phi = atan(recv_particles_pos[n].y/recv_particles_pos[n].x) * 180.0 / PI * ARCSEC;
                     
                     // do rough cut first with constant angular bounds
                     if (theta > theta_cut_rough[haloIdx][0] && theta < theta_cut_rough[haloIdx][1] && 
@@ -1143,7 +1170,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         // do coordinate rotation center halo at (r, 90, 0)
                         // B and k are the angle and axis of rotation, respectively,
                         // calculated near the beginning of this function
-                        float tmp_v[] = {recv_particles[n].x, recv_particles[n].y, recv_particles[n].z};
+                        float tmp_v[] = {recv_particles_pos[n].x, recv_particles_pos[n].y, recv_particles_pos[n].z};
                         vector<float> v(tmp_v, tmp_v+3);
                         vector<float> v_rot;
                         v_rot = matVecMul(R[haloIdx], v);
@@ -1167,23 +1194,25 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
     
                             // get redshift from scale factor
-                            float zz = aToZ(recv_particles[n].a);  
+                            float zz = aToZ(recv_particles_pos[n].a);  
                             
                             // spherical corrdinate transform of rotated positions
                             w.theta.push_back(v_theta);
                             w.phi.push_back(v_phi);
 
                             // other columns
-                            w.x.push_back(recv_particles[n].x);
-                            w.y.push_back(recv_particles[n].y);
-                            w.z.push_back(recv_particles[n].z);
-                            w.vx.push_back(recv_particles[n].vx);
-                            w.vy.push_back(recv_particles[n].vy);
-                            w.vz.push_back(recv_particles[n].vz);
+                            w.x.push_back(recv_particles_pos[n].x);
+                            w.y.push_back(recv_particles_pos[n].y);
+                            w.z.push_back(recv_particles_pos[n].z);
                             w.redshift.push_back(zz);
-                            w.id.push_back(recv_particles[n].id);
-                            w.rotation.push_back(recv_particles[n].rotation);
-                            w.replication.push_back(recv_particles[n].replication);
+                            w.id.push_back(recv_particles_pos[n].id);
+                            if(!positionOnly){
+                                w.vx.push_back(recv_particles_vel[n].vx);
+                                w.vy.push_back(recv_particles_vel[n].vy);
+                                w.vz.push_back(recv_particles_vel[n].vz);
+                                w.rotation.push_back(recv_particles_vel[n].rotation);
+                                w.replication.push_back(recv_particles_vel[n].replication);
+                            }
                             cutout_size++;
 
                             /*
@@ -1191,11 +1220,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             // print out individual particle info
 
                             if(rank == 1){
-                                cout << endl << "Particle " << recv_particles[n].id << ":   " << endl << 
-                                "x: " << recv_particles[n].x << endl << 
-                                "y: " << recv_particles[n].y << endl << 
-                                "z: " << recv_particles[n].z << endl <<
-                                "a: " << recv_particles[n].a << endl <<
+                                cout << endl << "Particle " << recv_particles_pos[n].id << ":   " << endl << 
+                                "x: " << recv_particles_pos[n].x << endl << 
+                                "y: " << recv_particles_pos[n].y << endl << 
+                                "z: " << recv_particles_pos[n].z << endl <<
+                                "a: " << recv_particles_pos[n].a << endl <<
                                 "rs: " << zz << endl <<
                                 "theta: " << v_theta << endl << 
                                 "phi: " << v_phi << endl; 
@@ -1319,18 +1348,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File_seek(z_file, offset_posvel, MPI_SEEK_SET);
             MPI_File_iwrite(z_file, &w.z[0], w.z.size(), MPI_FLOAT, &z_req);
             MPI_Wait(&z_req, MPI_STATUS_IGNORE);
-
-            MPI_File_seek(vx_file, offset_posvel, MPI_SEEK_SET);
-            MPI_File_iwrite(vx_file, &w.vx[0], w.vx.size(), MPI_FLOAT, &vx_req);
-            MPI_Wait(&vx_req, MPI_STATUS_IGNORE);
-
-            MPI_File_seek(vy_file, offset_posvel, MPI_SEEK_SET);
-            MPI_File_iwrite(vy_file, &w.vy[0], w.vy.size(), MPI_FLOAT, &vy_req);
-            MPI_Wait(&vy_req, MPI_STATUS_IGNORE);
-            
-            MPI_File_seek(vz_file, offset_posvel, MPI_SEEK_SET);
-            MPI_File_iwrite(vz_file, &w.vz[0], w.vz.size(), MPI_FLOAT, &vz_req);
-            MPI_Wait(&vz_req, MPI_STATUS_IGNORE);
             
             MPI_File_seek(theta_file, offset_posvel, MPI_SEEK_SET);
             MPI_File_iwrite(theta_file, &w.theta[0], w.theta.size(), MPI_FLOAT, &theta_req);
@@ -1344,32 +1361,44 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File_iwrite(redshift_file, &w.redshift[0], w.redshift.size(), MPI_FLOAT, &redshift_req);
             MPI_Wait(&redshift_req, MPI_STATUS_IGNORE);
             
-            MPI_File_seek(id_file, offset_posvel, MPI_SEEK_SET);
-            MPI_File_iwrite(id_file, &w.id[0], w.id.size(), MPI_FLOAT, &id_req);
-            MPI_Wait(&id_req, MPI_STATUS_IGNORE);
-            
-            MPI_File_seek(rotation_file, offset_posvel, MPI_SEEK_SET);
-            MPI_File_iwrite(rotation_file, &w.rotation[0], w.rotation.size(), 
-                            MPI_FLOAT, &rotation_req);
-            MPI_Wait(&rotation_req, MPI_STATUS_IGNORE);
-            
-            MPI_File_seek(replication_file, offset_posvel, MPI_SEEK_SET);
-            MPI_File_iwrite(replication_file, &w.replication[0], w.replication.size(), 
-                            MPI_FLOAT, &replication_req);
-            MPI_Wait(&replication_req, MPI_STATUS_IGNORE);
+            if(!positionOnly){
+                MPI_File_seek(vx_file, offset_posvel, MPI_SEEK_SET);
+                MPI_File_iwrite(vx_file, &w.vx[0], w.vx.size(), MPI_FLOAT, &vx_req);
+                MPI_Wait(&vx_req, MPI_STATUS_IGNORE);
+
+                MPI_File_seek(vy_file, offset_posvel, MPI_SEEK_SET);
+                MPI_File_iwrite(vy_file, &w.vy[0], w.vy.size(), MPI_FLOAT, &vy_req);
+                MPI_Wait(&vy_req, MPI_STATUS_IGNORE);
+                
+                MPI_File_seek(vz_file, offset_posvel, MPI_SEEK_SET);
+                MPI_File_iwrite(vz_file, &w.vz[0], w.vz.size(), MPI_FLOAT, &vz_req);
+                MPI_Wait(&vz_req, MPI_STATUS_IGNORE);
+                
+                MPI_File_seek(rotation_file, offset_posvel, MPI_SEEK_SET);
+                MPI_File_iwrite(rotation_file, &w.rotation[0], w.rotation.size(), 
+                                MPI_FLOAT, &rotation_req);
+                MPI_Wait(&rotation_req, MPI_STATUS_IGNORE);
+                
+                MPI_File_seek(replication_file, offset_posvel, MPI_SEEK_SET);
+                MPI_File_iwrite(replication_file, &w.replication[0], w.replication.size(), 
+                                MPI_FLOAT, &replication_req);
+                MPI_Wait(&replication_req, MPI_STATUS_IGNORE);
+            }
 
             MPI_File_close(&id_file);
             MPI_File_close(&x_file);
             MPI_File_close(&y_file);
             MPI_File_close(&z_file);
-            MPI_File_close(&vx_file);
-            MPI_File_close(&vy_file);
-            MPI_File_close(&vz_file);
             MPI_File_close(&redshift_file);
             MPI_File_close(&theta_file);
             MPI_File_close(&phi_file);
-            MPI_File_close(&rotation_file);
-            MPI_File_close(&replication_file);
+            if(!positionOnly){
+                MPI_File_close(&vx_file);
+                MPI_File_close(&vy_file);
+                MPI_File_close(&vz_file);
+                MPI_File_close(&rotation_file);
+                MPI_File_close(&replication_file);
+            }
         
             MPI_Barrier(MPI_COMM_WORLD);
             stop = MPI_Wtime();

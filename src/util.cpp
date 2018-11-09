@@ -10,55 +10,78 @@ using namespace std;
 //////////////////////////////////////////////////////
 
 
-MPI_Datatype createParticles(){
+MPI_Datatype createParticles_pos(){
     // This function creates and returns an MPI struct type which has a field per 
-    // particle quantity. One particle shall be represented by one "particles_mpi"
-    // object, which is based upon the "particles" struct above
+    // "primary" particle quantity (position, redshift, id and rank). 
+    // One particle shall be represented by one "particles_mpi" object, which is 
+    // based upon the "particle_pos" struct in util.h
     //
     // Params:
     // :return: a struct of custom MPI type "particles_mpi"
 
     MPI_Datatype particles_mpi;
-    MPI_Datatype type[11] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
-                             MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
-                             MPI_FLOAT, MPI_INT64_T, MPI_INT, 
-                             MPI_INT32_T, MPI_INT};
-    int blocklen[11] = {1,1,1,1,1,1,1,1,1,1,1};
-    MPI_Aint disp[11] = {
-                         offsetof(particle, x),
-                         offsetof(particle, y),
-                         offsetof(particle, z),
-                         offsetof(particle, vx),
-                         offsetof(particle, vy),
-                         offsetof(particle, vz),
-                         offsetof(particle, a),
-                         offsetof(particle, id),
-                         offsetof(particle, rotation),
-                         offsetof(particle, replication),
-                         offsetof(particle, rank)
+    MPI_Datatype type[6] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
+                             MPI_FLOAT, MPI_INT64_T, MPI_INT};
+    int blocklen[6] = {1,1,1,1,1,1};
+    MPI_Aint disp[6] = {
+                         offsetof(particle_pos, x),
+                         offsetof(particle_pos, y),
+                         offsetof(particle_pos, z),
+                         offsetof(particle_pos, a),
+                         offsetof(particle_pos, id),
+                         offsetof(particle_pos, rank)
                         };
-    MPI_Type_struct(11, blocklen, disp, type, &particles_mpi);
+    MPI_Type_struct(6, blocklen, disp, type, &particles_mpi);
+    MPI_Type_commit(&particles_mpi);
+    return particles_mpi;
+}
+
+
+MPI_Datatype createParticles_vel(){
+    // This function creates and returns an MPI struct type which has a field per 
+    // "secondary" particle quantity (velocity, rotation and replication info). 
+    // One particle shall be represented by one "particles_mpi" object, which is 
+    // based upon the "particle_vel" struct in util.h
+    //
+    // Params:
+    // :return: a struct of custom MPI type "particles_mpi"
+
+    MPI_Datatype particles_mpi;
+    MPI_Datatype type[6] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
+                             MPI_INT, MPI_INT32_T, MPI_INT};
+    int blocklen[6] = {1,1,1,1,1,1};
+    MPI_Aint disp[6] = {
+                         offsetof(particle_vel, vx),
+                         offsetof(particle_vel, vy),
+                         offsetof(particle_vel, vz),
+                         offsetof(particle_vel, rotation),
+                         offsetof(particle_vel, replication),
+                         offsetof(particle_vel, rank)
+                        };
+    MPI_Type_struct(6, blocklen, disp, type, &particles_mpi);
     MPI_Type_commit(&particles_mpi);
     return particles_mpi;
 }
 
 
 //======================================================================================
+/*
 
-
-bool comp_rank(const particle &a, const particle &b){
-    // compare the rank identifiers of two "particle" structs
+template<typename T>
+bool comp_rank(const T &a, const T &b){
+    // compare the rank fields of two structs. Type T should be either a
+    // particle_pos or particle_vel
     //
     // Params:
-    // :param a: a particle struct, as defined above
-    // :param b: a particle struct, as defined above
+    // :param a: a particle struct, as defined in util.h
+    // :param b: a particle struct, as defined in util.h
     // :return: a bool indicating whether or not the identifier of the rank
     //          possessing a is smaller in value than the identifier of the
     //          rank posessing b
 
     return a.rank < b.rank;
 }
-
+*/
 
 //======================================================================================
 
@@ -148,9 +171,10 @@ void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &h
 
 int getLCSubdirs(string dir, vector<string> &subdirs) {
     // This function writes all of the subdirectory names present in a lightcone
-    // output directory to the string vector subdirs. The assumptions are that 
-    // each subdirectory name somewhere contains the character couple "lc", and
-    // that no non-directory items lie under dir/. 
+    // output directory to the string vector 'subdirs'. The assumptions are that 
+    // each subdirectory name somewhere contains either the character couple "lc" 
+    // or the string "STEP", and that no non-directory items lie under dir/. Any
+    // subdirs not conforming to this naming scheme are ignored.
     //
     // Params:
     // :param dir: path to a lightcone output directory
@@ -167,7 +191,8 @@ int getLCSubdirs(string dir, vector<string> &subdirs) {
 
     // find all items within dir/
     while ((dirp = readdir(dp)) != NULL) {
-        if (string(dirp->d_name).find("lc")!=string::npos){ 
+        if (string(dirp->d_name).find("lc")!=string::npos or 
+            string(dirp->d_name).find("STEP")!=string::npos){ 
             subdirs.push_back(string(dirp->d_name));
         }   
     }
@@ -180,7 +205,7 @@ int getLCSubdirs(string dir, vector<string> &subdirs) {
 
 
 int getLCFile(string dir, string &file) {
-    // This functions returns the header file present in a lightcone output 
+    // This functions returns the GIO header file present in a lightcone output 
     // step subdirectory (header files are those that are unhashed (#)). 
     // This function enforces that only one file header is found, implying
     // that the output of only one single lightcone step is contained in the
@@ -189,7 +214,9 @@ int getLCFile(string dir, string &file) {
     // for getLCSteps(). 
     // Assumptions are that the character couple "lc" appear somewhere in the 
     // file name, and that there are no subdirectories or otherwise unhashed
-    // file names present in directory dir/. 
+    // file names present in directory dir/.
+    // As a exception, .SubInput GIO files are allowed to be present, and if so, 
+    // are simply ignored.
     //
     // Params:
     // :param dir: the path to the directory containing the output gio files
@@ -208,7 +235,8 @@ int getLCFile(string dir, string &file) {
     vector<string> files;
     while ((dirp = readdir(dp)) != NULL) {
         if (string(dirp->d_name).find("lc") != string::npos & 
-            string(dirp->d_name).find("#") == string::npos){ 
+            string(dirp->d_name).find("#") == string::npos  & 
+            string(dirp->d_name).find("SubInput") == string::npos   ){ 
             files.push_back(string(dirp->d_name));
         }   
     }

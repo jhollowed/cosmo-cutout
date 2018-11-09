@@ -126,8 +126,11 @@ int main( int argc, char** argv ) {
     //              contents rather than stopping execution with an error. If anything
     //              other than binary files are found in the directory, then an error
     //              is still raised and nothing is deleted.
+    // --posOnly: only output "first-order" particle quantities to the resultant cutout, 
+    //            including x, y, z, a, and id. vx, vy, vz, replication, and rotation 
+    //            will be ommitted. Should speed up redistribution step.
     // 
-    // All three of these additional options default to false
+    // All four of these additional options default to false
 
     // start MPI 
     MPI_Init(&argc, &argv);
@@ -191,6 +194,7 @@ int main( int argc, char** argv ) {
     bool verbose = false;
     bool timeit = false;
     bool overwrite = false;
+    bool positionOnly = false;
 
     // check that supplied arguments are valid
     vector<string> args(argv+1, argv + argc);
@@ -263,6 +267,9 @@ int main( int argc, char** argv ) {
         else if (strcmp(argv[i],"--overwrite") == 0){
             overwrite = true;
         }
+        else if (strcmp(argv[i],"--posOnly") == 0){
+            positionOnly = true;
+        }
     }
 
     // if customHaloFile == true, then create an output subdirectory per halo in out_dir
@@ -326,10 +333,10 @@ int main( int argc, char** argv ) {
 
     if(customHalo || customHaloFile){
         processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, 
-                  rank, numranks, verbose, timeit, overwrite);
+                  rank, numranks, verbose, timeit, overwrite, positionOnly);
     }else{
         processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, 
-                  rank, numranks, verbose, timeit, overwrite);
+                  rank, numranks, verbose, timeit, overwrite, positionOnly);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
