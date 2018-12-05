@@ -47,12 +47,6 @@ and run
 resoft
 ```
 
-Or, if running on Phoenix (formerly Jupiter), run
-
-```bash
-module load mvapich2-2.2b-gcc-5.3.0-o4of6w7
-```
-
 Next, compile the source code
 
 on Mira/Cetus:
@@ -63,11 +57,6 @@ make -f Makefile.mira
 on Cooley:
 ```bash
 make -f Makefile.cooley
-```
-
-on Phoenix:
-```bash
-make -f Makefile.phoenix
 ```
 
 # Running the cutout
@@ -127,7 +116,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
   * `x_0`, `y_0`, `z_0` - The comoving Cartesian position, in Mpc/h, of the object on which to center the cutout  
   * `box length` - the width of the fov around the object of interest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8;*, as defined above, is tan<sup>-1</sup>(*B*/2*r*<sub>0</sub>), where *r*<sub>0</sub> is *r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>)  
 
-The `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`.
+The `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`. 
 
 ### Multiple objects of interest
 
@@ -140,15 +129,17 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 #### Arguments:
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift`, `box length` - See description above.  
-  * `input object file` - A plain text file containing one line per object of interest, which includes an object identifier, and three Cartesian comoving positions, as such:  
+  * `input object file` - A plain text file containing one line per object of interest, which includes an object identifier, a halo redshfit, mass, and optionally a radius, and three Cartesian comoving positions, as such:  
   
 ```
-123456789 50.0 55.0 20.0
-987654321 10.0 0.0 30.0
-192837465 110.0 35.0 20.0
+123456789 0.5, 1e14, 3, 50.0 55.0 20.0
+987654321 0.1, 1e15, 4, 10.0 0.0 30.0
+192837465 1, 1e13.5, 1, 110.0 35.0 20.0
 ...
 ```
-In this example, the first object has an id of `123456789`, and position *x*=`50`, *y*=`55`, *z*=`20`. The positions must be in such a form that they can be parsed as `floats`. The identifiers can be anything, and are parsed as strings (in this way, they can be used for storing other meta data, like redshifts and masses). Under this usage, a new subdirectory will be created per object as listed in the `input object file` under `output directory`, of the form `halo_123456789`, for example. It is then under that directory that simulation step-wise directories will be created (as in the description of the `output directory` argument).
+In this example, the first object has an id of `123456789`, a redsshift of `0.5`, mass of `1e14 M_sun/h`, radius of `3 Mpc/h`, position *x*=`50`, *y*=`55`, *z*=`20 Mpc/h`. All quantities expect for the `id` must be in such a form that they can be parsed as `floats`. The radius is optionally included, and can be removed as long as `massDef` is set to `fof` (see below). 
+
+The identifiers can be anything, and are parsed as strings (in this way, they can be used for storing other meta data if desired). Under this usage, a new subdirectory will be created per object as listed in the `input object file` under `output directory`, of the form `halo_123456789`, for example. It is then under that directory that simulation step-wise directories will be created (as in the description of the `output directory` argument). It is also within the `output directory` that a `properties.csv` file will be written, which will contain the halo redshift, mass, optionally radius, and information about the scale of the final cutout.
 
 The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `-b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
 
@@ -232,6 +223,24 @@ If the 5 steps above don't make much sense, please let me know (contact info bel
 
 </p>
 </details>
+
+## Additional Arguments and Options
+
+`-m` or `--massDef` specified the mass definition, in the case that `-f` is being used. Can either be `sod` or `fof`. If `sod`, then it is expected that each row of the file pointed to by `-f` has 7 elements, with teh fourth being the spherical overdensity radius. if `fof`, then the radius should be omitted from that file, else everything will break :)
+
+`-v` or `--verbose` tells the application to generate tons of output, including explicity printing the rotation matrices and similar objects being used for Use Case 2
+
+`--timeit` instruct the application to report wall-times for the data read, redistribution, cutout computation, and write-out
+
+`--overwrite` allows the program to delete any contents inside of the `output directory`, rather than crashing with a warning
+
+`--posOnly` will cause only particle positions, ids, and redshifts to be output. Velocities and lightcone rotation/replication information will be discarded (this should speed up both the data redistribution and the write-out).
+
+For example, to run multiple cutouts under Use Case 2 with an `fof`mass definition, and turn on all of the options above, one would execute
+
+```
+lc_cutout <input lightcone directory> <output directory> <min redshift> <max redshift> --haloFile <input object file> --boxLength <box length> --massDef fof --verbose --tiemit --overwrite --posOnly
+```
 
 ## Caveats
 
