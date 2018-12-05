@@ -104,65 +104,87 @@ void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
 //======================================================================================
 
 
-void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloIds){
+void readHaloFile(string haloFileName, vector<float> &haloPos, 
+                                       vector<string> &haloTags, 
+                                       vector<float> &haloProps,
+                                       string massDef){
     // This function reads halo identifiers and positions from an input text file, where 
     // that file is expected to have one halo per row, each space-delimited row appearing as 
     //
-    // id1 x1 y1 z1
-    // id1 x2 y2 z2
-    // id1 x3 y3 z3 
+    // tag1 redshift1 mass1 radius1 x1 y1 z1
+    // tag2 redshift2 mass2 radius2 x2 y2 z2
+    // tag3 redshift3 mass3 radius3 x3 y3 z3
     // ...
     //
-    // and parses them into two vectors to contain the ids and positions, as such:
+    // and parses them into three vectors to contain the ids and positions, as such:
     //
-    // vector  haloIds: {id1, id2, id3,...}
-    // vector haloPos: {x1, y1, z1, x2, y2, z2, x3, y3, z3,...}
+    // vector  haloTags: {tag1, tag2,...}
+    // vector haloPos: {x1, y1, z1, x2, y2, z2,...}
+    // vector haloProps: {mass1, redshift1, radius1, mass2, redshift2, radius2,...}
     //
-    // The positions are expected to be able to be cast to floats
-    // The ids will be maintained as strings, and can contain meta data
-    // other than just the halo fof tag, separated by any non-whitespace 
-    // character
+    // - The positions are expected to be able to be cast to floats
+    // - The tags are expected to be able to be cast as strings
+    // - The redshifts, masses, and radii are expected to be able to be cast as floats.
+    //   The radius can be omitted if the argument massDef=='fof'. If the radius is omitted
+    //   and the massDef arg is not set properly, or vice-verse, everything will break!
+    //  
+    // A code module to generate such a text file for a given HACC simulation can be cloned at  
+    // https://github.com/jhollowed/cosmology/blob/master/lightcone/list_lc_halos.py
     //
     // Params:
     // :param haloFileName: the ascii file containing the halo data, in the format 
     //                      described above
     // :param haloPos: float vector to hold halo positions
-    // :param haloIds: string vector to hold halo ids
+    // :param haloTags: string vector to hold halo tags
+    // :param haloProps: float vector to hold halo info including mass, redshift, 
+    //                  and radius if def='sod'
+    // :param massDef: the mass definition given in the ids of the haloFile, either 
+    //                 'sod', or 'fof'. Defaults to 'sod'
     
-    // get halo positions (remove every 4th element)
-    {
-    vector<string> haloPos_strs;
     ifstream haloFile(haloFileName.c_str());
     copy(istream_iterator<string>(haloFile), 
          istream_iterator<string>(), 
-         back_inserter(haloPos_strs));
-   
-    // ensure input file is as expected, more or less 
-    if(haloPos_strs.size() % 4 != 0){ 
-        cout << "\nEach halo position given in input file must " <<
-                "have an id and three components in the space-delimited " <<
-                "form: tag x y z " << endl;
+         back_inserter(haloTags));
+
+    int rowLen;
+    if(massDef == "fof")
+        rowLen = 6;
+    else if(massDef == "sod")
+        rowLen = 7;
+    else{
+        cout << "Unknown mass definition " << massDef << 
+                ". Valid options are \'fof\' or \'sod\'" << endl;
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
     
-    for(int i=0; i<(haloPos_strs.size()/4)*3; ++i){
-        haloPos.push_back( strtof(haloPos_strs[i+1+i/3].c_str(), 0) );
-    }
-    }
+    // ensure input file is as expected, more or less 
+    if(haloTags.size() % rowLen != 0){ 
+        if(massDef == "sod")
+            cout << "\nWhen massDef==\'sod\', each halo position given in input file must " <<
+                    "have 7 quantities in the space-delimited form: " <<
+                    "id redshift m200c r200c x y z " << endl;
+        else
+            cout << "\nWhen massDef==\'fof\', each halo position given in input file must " <<
+                    "have 6 quantities in the space-delimited form: " <<
+                    "id redshift m_fof x y z " << endl;
+        MPI_Abort(MPI_COMM_WORLD, 0);
+    } 
     
-    // get halo tags (every 4th element)
-    {
-    ifstream haloFile(haloFileName.c_str());
-    copy(istream_iterator<string>(haloFile), 
-         istream_iterator<string>(), 
-         back_inserter(haloIds));
-      
-    for(int i=0; i<haloIds.size()/4; ++i){
-        haloIds[i] = haloIds[i*4];
+    for(int i=0; i<haloTags.size()/rowLen; ++i){
+        
+        // tag is every 6th element
+        haloTags[i] = haloTags[i*rowLen];
+        // redshift, mass, and radius
+        haloProps.push_back( strtof(haloTags[i*rowLen+1].c_str(), 0) );
+        haloProps.push_back( strtof(haloTags[i*rowLen+2].c_str(), 0) );
+        if(massDef == "sod")
+            haloProps.push_back( strtof(haloTags[i*rowLen+3].c_str(), 0) );
+        // x, y, z
+        haloPos.push_back( strtof(haloTags[i*rowLen+(rowLen-3)].c_str(), 0) );
+        haloPos.push_back( strtof(haloTags[i*rowLen+(rowLen-2)].c_str(), 0) );
+        haloPos.push_back( strtof(haloTags[i*rowLen+(rowLen-1)].c_str(), 0) );
     }
-    haloIds.resize(haloIds.size()/4);
-    }
-    
+    haloTags.resize(haloTags.size()/rowLen);
 }
 
 

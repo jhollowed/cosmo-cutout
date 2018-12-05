@@ -189,12 +189,14 @@ int main( int argc, char** argv ) {
     vector<float> theta_cut(2);
     vector<float> phi_cut(2);
     vector<float> haloPos;
-    vector<string> haloIds;
+    vector<float> haloProps;
+    vector<string> haloTags;
     float boxLength;
     bool verbose = false;
     bool timeit = false;
     bool overwrite = false;
     bool positionOnly = false;
+    string massDef="sod";
 
     // check that supplied arguments are valid
     vector<string> args(argv+1, argv + argc);
@@ -208,12 +210,18 @@ int main( int argc, char** argv ) {
             (find(args.begin(), args.end(), "--haloFile") != args.end()));
     bool customBox = int((find(args.begin(), args.end(), "-b") != args.end()) ||
             (find(args.begin(), args.end(), "--boxLength") != args.end()));
+    bool customMassDef = int((find(args.begin(), args.end(), "-m") != args.end()) ||
+            (find(args.begin(), args.end(), "--massDef") != args.end()));
 
     // there are two general use cases of this cutout code, as described in the 
     // docstring below the declaration of this main function. Here, the program aborts
     // to prevent confused input arguments which mix those two use cases.
     if( (customHalo || customHaloFile) ^ customBox ){ 
         cout << "\n-h (or -f) and -b options must accompany eachother" << endl;
+        MPI_Abort(MPI_COMM_WORLD, 0);
+    }
+    if( customMassDef && !customHaloFile){
+        cout << "\n-m does nothing if not used along with -f";
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
     if( customThetaBounds ^ customPhiBounds ){
@@ -226,7 +234,7 @@ int main( int argc, char** argv ) {
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
     if( !customThetaBounds && !customPhiBounds && !customHalo && !customHaloFile && !customBox ){
-        cout << "\nValid options are -h, -f, -b, -t, -p, -v, and --timeit. See github readme for help";
+        cout << "\nValid options are -h, -f, -b, -t, -p, -v, -m, and --timeit. See github readme for help";
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
@@ -246,6 +254,12 @@ int main( int argc, char** argv ) {
             phi_cut[0] = phi_center - dphi;
             phi_cut[1] = phi_center + dphi;
         }
+        else if (strcmp(argv[i],"-b")==0 || strcmp(argv[i],"--boxLength")==0){
+            boxLength = strtof(argv[++i], NULL);
+        }
+        else if (strcmp(argv[i],"-m")==0 || strcmp(argv[i],"--massDef")==0){
+            massDef = argv[++i];
+        }
         else if(strcmp(argv[i],"-h")==0 || strcmp(argv[i],"--halo")==0){
             haloPos.push_back(strtof(argv[++i], NULL));
             haloPos.push_back(strtof(argv[++i], NULL));
@@ -253,10 +267,7 @@ int main( int argc, char** argv ) {
         }
         else if(strcmp(argv[i],"-f")==0 || strcmp(argv[i],"--haloFile")==0){
             string haloFileName(argv[++i]);
-            readHaloFile(haloFileName, haloPos, haloIds);
-        }
-        else if (strcmp(argv[i],"-b")==0 || strcmp(argv[i],"--boxLength")==0){
-            boxLength = strtof(argv[++i], NULL);
+            readHaloFile(haloFileName, haloPos, haloTags, haloProps, massDef);
         }
         else if (strcmp(argv[i],"-v")==0 || strcmp(argv[i],"--verbose")==0){
             verbose = true;
@@ -275,10 +286,10 @@ int main( int argc, char** argv ) {
     // if customHaloFile == true, then create an output subdirectory per halo in out_dir
     vector<string> halo_out_dirs;
     if(customHaloFile){
-        for(int h=0; h<haloIds.size(); ++h){
+        for(int h=0; h<haloTags.size(); ++h){
 
             ostringstream halo_subdir;
-            halo_subdir << out_dir << "halo_" << haloIds[h] << "/";
+            halo_subdir << out_dir << "halo_" << haloTags[h] << "/";
             
             DIR *dir = opendir(halo_subdir.str().c_str());
             struct dirent *d;
@@ -309,8 +320,8 @@ int main( int argc, char** argv ) {
             
             if(verbose == true){
                 cout << ":" << endl;
-                for(int k=0; k<haloIds.size(); ++k){
-                    cout << "Halo " << haloIds[k] << ": " << endl;
+                for(int k=0; k<haloTags.size(); ++k){
+                    cout << "Halo " << haloTags[k] << ": " << endl;
                     for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[k+i] << " ";}
                 }
             }
@@ -322,6 +333,12 @@ int main( int argc, char** argv ) {
             cout << "phi bounds: ";
             cout << phi_cut[0]/ARCSEC << " -> " << phi_cut[1]/ARCSEC <<" deg" << endl;
         }
+
+
+        cout << "\nverbose is set to " << verbose << endl;
+        cout << "timeit is set to " << timeit << endl;
+        cout << "overwrite is set to " << overwrite << endl;
+        cout << "posOnly is set to " << positionOnly << endl;
     }
 
     // call overloaded processing function
@@ -332,8 +349,8 @@ int main( int argc, char** argv ) {
     start = MPI_Wtime();
 
     if(customHalo || customHaloFile){
-        processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, boxLength, 
-                  rank, numranks, verbose, timeit, overwrite, positionOnly);
+        processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, haloProps, 
+                  boxLength, rank, numranks, verbose, timeit, overwrite, positionOnly);
     }else{
         processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, 
                   rank, numranks, verbose, timeit, overwrite, positionOnly);

@@ -424,8 +424,8 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 //////////////////////////////////////////////////////
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
-               vector<float> halo_pos, float boxLength, int rank, int numranks, 
-               bool verbose, bool timeit, bool overwrite, bool positionOnly){
+               vector<float> halo_pos, vector<float> halo_props, float boxLength, int rank, 
+               int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly){
 
     ///////////////////////////////////////////////////////////////
     //
@@ -498,6 +498,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // get next three values in halo_pos
         float tmp_pos[] = {halo_pos[h], halo_pos[h+1], halo_pos[h+2]};
         vector<float> this_halo_pos(tmp_pos, tmp_pos+3);
+
+        // get next two or three values in halo_props (redshift, mass, radius) or (redshift, mass)
+        // last element of tmp_props will be garbage if numProps == 2 (massDef == 'fof'),
+        // but that's okay.
+        float tmp_props[] = {halo_props[h], halo_props[h+1], halo_props[h+2]};
+        int numProps = halo_props.size() / numHalos;
+        if(numProps != 2 and numProps != 3){
+            cout << "Something went wrong... " << numProps << " properties found per halo" << 
+                    " in input vectors. Is massDef correct? Please contact developer." << endl;
+            MPI_Abort(MPI_COMM_WORLD, 0);
+        } 
+        vector<float> this_halo_props(tmp_props, tmp_props+numProps);
         
         // find distance magnitude (new rotated halo position)
         float halo_r = (float)sqrt(this_halo_pos[0]*this_halo_pos[0] + 
@@ -690,7 +702,30 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             cout << "rough phi bounds set to: ";
             cout << phi_cut_rough[haloIdx][0]/ARCSEC << "deg -> " << 
                     phi_cut_rough[haloIdx][1]/ARCSEC <<"deg" << endl;
-        }       
+        }
+
+        // Write out a csv file to this halo's cutout directory to contain halo properties, 
+        // cutout specifications,  and run meta data
+        
+        ofstream props_file;
+        ostringstream props_file_name; 
+        props_file_name << out_dirs[haloIdx]<< "/properties.csv";
+        props_file.open(props_file_name.str().c_str());
+        
+        if(numProps == 3)
+            props_file << "#sod_halo_mass" << "," <<  "sod_halo_radius";
+        else
+            props_file << "#fof_halo_mass";
+        props_file << "," << "halo_redshift" << "," << 
+                             "halo_lc_x" << "," << "halo_lc_y" << "," << "halo_lc_z" <<
+                             "boxRadius_Mpc" << "," << "boxRadius_arcsec" << "\n";
+        for(int i=0; i<this_halo_props.size(); ++i)
+            props_file << this_halo_props[i] << ",";
+        for(int i=0; i<this_halo_pos.size(); ++i)
+            props_file << this_halo_pos[i] << ",";
+       props_file << halfBoxLength << "," << 
+                     dtheta * 180.0/PI * ARCSEC << "\n";
+       props_file.close();
     }
 
     ///////////////////////////////////////////////////////////////
@@ -716,7 +751,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     double stop;
     double duration;
     
-    for (int i=0; i<step_strings.size();++i){
+    for (int i=0; i<step_strings.size(); ++i){
    
         // time read in 
         MPI_Barrier(MPI_COMM_WORLD);
@@ -1160,6 +1195,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         phi = atan(recv_particles_pos[n].y/recv_particles_pos[n].x) * 180.0 / PI * ARCSEC;
                     
                     // do rough cut first with constant angular bounds
+                    // could make this much faster by sorting theta and/or phi...
                     if (theta > theta_cut_rough[haloIdx][0] && theta < theta_cut_rough[haloIdx][1] && 
                         phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
                      

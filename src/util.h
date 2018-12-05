@@ -118,7 +118,9 @@ bool comp_rank(const T &a, const T &b){
 
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
 
-void readHaloFile(string haloFileName, vector<float> &haloPos, vector<string> &haloTags);
+void readHaloFile(string haloFileName, vector<float> &haloPos,
+                  vector<string> &haloTags, vector<float> &haloProps,
+                  string massDef = "sod");
 
 int getLCSubdirs(string dir, vector<string> &subdirs);
 
