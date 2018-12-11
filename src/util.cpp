@@ -20,18 +20,21 @@ MPI_Datatype createParticles_pos(){
     // :return: a struct of custom MPI type "particles_mpi"
 
     MPI_Datatype particles_mpi;
-    MPI_Datatype type[6] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
-                             MPI_FLOAT, MPI_INT64_T, MPI_INT};
-    int blocklen[6] = {1,1,1,1,1,1};
-    MPI_Aint disp[6] = {
+    MPI_Datatype type[9] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
+                            MPI_FLOAT, MPI_FLOAT, MPI_INT64_T, MPI_INT};
+    int blocklen[9] = {1,1,1,1,1,1,1,1};
+    MPI_Aint disp[9] = {
                          offsetof(particle_pos, x),
                          offsetof(particle_pos, y),
                          offsetof(particle_pos, z),
+                         offsetof(particle_pos, d),
+                         offsetof(particle_pos, theta),
+                         offsetof(particle_pos, phi),
                          offsetof(particle_pos, a),
                          offsetof(particle_pos, id),
-                         offsetof(particle_pos, rank)
+                         offsetof(particle_pos, myrank)
                         };
-    MPI_Type_struct(6, blocklen, disp, type, &particles_mpi);
+    MPI_Type_struct(9, blocklen, disp, type, &particles_mpi);
     MPI_Type_commit(&particles_mpi);
     return particles_mpi;
 }
@@ -56,32 +59,13 @@ MPI_Datatype createParticles_vel(){
                          offsetof(particle_vel, vz),
                          offsetof(particle_vel, rotation),
                          offsetof(particle_vel, replication),
-                         offsetof(particle_vel, rank)
+                         offsetof(particle_vel, myrank)
                         };
     MPI_Type_struct(6, blocklen, disp, type, &particles_mpi);
     MPI_Type_commit(&particles_mpi);
     return particles_mpi;
 }
 
-
-//======================================================================================
-/*
-
-template<typename T>
-bool comp_rank(const T &a, const T &b){
-    // compare the rank fields of two structs. Type T should be either a
-    // particle_pos or particle_vel
-    //
-    // Params:
-    // :param a: a particle struct, as defined in util.h
-    // :param b: a particle struct, as defined in util.h
-    // :return: a bool indicating whether or not the identifier of the rank
-    //          possessing a is smaller in value than the identifier of the
-    //          rank posessing b
-
-    return a.rank < b.rank;
-}
-*/
 
 //======================================================================================
 
@@ -98,6 +82,21 @@ void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
     for(int j = 0; j < Np; ++j){
         idxRemap.push_back(j % numranks);
     }
+}
+
+
+//======================================================================================
+
+
+bool comp_by_theta(const particle_pos &a, const particle_pos &b){
+    // Compares two particle_pos structs by their 'theta' field
+    //
+    // Params:
+    // :param a: a particle_pos struct
+    // :param b: a particle_pos struct
+    // :return: 1 if a.theta < b.theta, 0 otherwise
+    
+    return a.theta < b.theta;
 }
 
 
@@ -737,7 +736,7 @@ void cross_prod_matrix(const vector<float> &k, vector<vector<float> > &K){
 //======================================================================================
 
 
-void rotation_matrix(int rank, const vector<vector<float> > &K, const float B, vector<vector<float> > &R){
+void rotation_matrix(const vector<vector<float> > &K, const float B, vector<vector<float> > &R){
     
     // Computes the rotation matrix, R, as found in the Rodrigues 
     // rotation formula

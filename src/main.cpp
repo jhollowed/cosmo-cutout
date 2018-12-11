@@ -134,11 +134,11 @@ int main( int argc, char** argv ) {
 
     // start MPI 
     MPI_Init(&argc, &argv);
-    int rank, numranks;
+    int myrank, numranks;
     MPI_Comm_size(MPI_COMM_WORLD, &numranks);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-    if(rank == 0){ cout << "\n\n---------- Starting on " << numranks << 
+    if(myrank == 0){ cout << "\n\n---------- Starting on " << numranks << 
                            " MPI ranks ----------" << endl; }
     char cart[3] = {'x', 'y', 'z'};
 
@@ -163,7 +163,7 @@ int main( int argc, char** argv ) {
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
-    if(rank == 0){ cout << "Using lightcone at ";  
+    if(myrank == 0){ cout << "Using lightcone at ";  
                    cout << input_lc_dir << endl;
                    cout << "Writing at ";
                    cout << out_dir << endl;}
@@ -177,7 +177,7 @@ int main( int argc, char** argv ) {
     
     vector<string> step_strings;
     getLCSteps(maxStep, minStep, input_lc_dir, step_strings);
-    if(rank == 0){ 
+    if(myrank == 0){ 
         cout << "MAX STEP: " << maxStep << endl;
         cout << "MIN STEP: " << minStep << endl;
         cout << "steps to include from z= " << minZ << " to z=" << maxZ << ": " << endl;
@@ -263,7 +263,12 @@ int main( int argc, char** argv ) {
         else if(strcmp(argv[i],"-h")==0 || strcmp(argv[i],"--halo")==0){
             haloPos.push_back(strtof(argv[++i], NULL));
             haloPos.push_back(strtof(argv[++i], NULL));
-            haloPos.push_back(strtof(argv[++i], NULL));  
+            haloPos.push_back(strtof(argv[++i], NULL));
+            // set halo properties to -1 (unknown)
+            haloProps.push_back(-1.0); 
+            haloProps.push_back(-1.0); 
+            if(massDef == "sod")
+                haloProps.push_back(-1.0); 
         }
         else if(strcmp(argv[i],"-f")==0 || strcmp(argv[i],"--haloFile")==0){
             string haloFileName(argv[++i]);
@@ -303,7 +308,7 @@ int main( int argc, char** argv ) {
             // Otherwise, create the subdir
             else{
                 mkdir(halo_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-                if(rank == 0){ cout << "Created output directory: " << halo_subdir.str() << endl; }
+                if(myrank == 0){ cout << "Created output directory: " << halo_subdir.str() << endl; }
             }
             halo_out_dirs.push_back(halo_subdir.str());
         }
@@ -314,7 +319,7 @@ int main( int argc, char** argv ) {
     }
     
     // print summary 
-    if(rank == 0){
+    if(myrank == 0){
         if(customHalo || customHaloFile){
             cout << endl << haloPos.size()/3 << " target halo(s) will be cut out of the lightcone";
             
@@ -350,17 +355,17 @@ int main( int argc, char** argv ) {
 
     if(customHalo || customHaloFile){
         processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, haloProps, 
-                  boxLength, rank, numranks, verbose, timeit, overwrite, positionOnly);
+                  boxLength, myrank, numranks, verbose, timeit, overwrite, positionOnly);
     }else{
         processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, 
-                  rank, numranks, verbose, timeit, overwrite, positionOnly);
+                  myrank, numranks, verbose, timeit, overwrite, positionOnly);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     stop = MPI_Wtime();
     
     double duration = stop - start;
-    if(rank == 0 and timeit == true){ cout << "\nExecution time: " << duration << " s" << endl; }
+    if(myrank == 0 and timeit == true){ cout << "\nExecution time: " << duration << " s" << endl; }
 
     MPI_Finalize();
     return 0;

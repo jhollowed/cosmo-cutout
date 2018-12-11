@@ -36,6 +36,7 @@ struct Buffers_read {
     vector<POSVEL_T> x;
     vector<POSVEL_T> y;
     vector<POSVEL_T> z;
+    vector<POSVEL_T> d;
     vector<POSVEL_T> vx;
     vector<POSVEL_T> vy;
     vector<POSVEL_T> vz;
@@ -43,6 +44,8 @@ struct Buffers_read {
     vector<ID_T> id;
     vector<int> rotation;
     vector<int32_t> replication;
+    vector<float> theta;
+    vector<float> phi;
 };
 
 struct Buffers_write {
@@ -69,12 +72,16 @@ struct Buffers_write {
 struct particle_pos {
 
     // struct for containing individual "primary" particle quantities
+    // d is sqrt(x^2 + y^2 + z^2)
     POSVEL_T x;
     POSVEL_T y;
     POSVEL_T z;
+    POSVEL_T d;
     POSVEL_T a;
+    float theta;
+    float phi;
     ID_T id;
-    int rank;
+    int myrank;
 };
 
 struct particle_vel {
@@ -85,7 +92,7 @@ struct particle_vel {
     POSVEL_T vz;
     int rotation;
     int32_t replication;
-    int rank;
+    int myrank;
 };
 
 
@@ -103,7 +110,7 @@ MPI_Datatype createParticles_vel();
 
 template<typename T>
 bool comp_rank(const T &a, const T &b){
-    // compare the rank fields of two structs. Type T should be either a
+    // compare the myrank fields of two structs. Type T should be either a
     // particle_pos or particle_vel
     //
     // Params:
@@ -113,10 +120,10 @@ bool comp_rank(const T &a, const T &b){
     //          possessing a is smaller in value than the identifier of the
     //          rank posessing b
 
-    return a.rank < b.rank;
+    return a.myrank < b.myrank;
 }
-
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
+bool comp_by_theta(const particle_pos &a, const particle_pos &b);
 
 void readHaloFile(string haloFileName, vector<float> &haloPos,
                   vector<string> &haloTags, vector<float> &haloProps,
@@ -186,8 +193,7 @@ vector<vector<float> > invert_3x3(const vector<vector<float> > &m);
 void cross_prod_matrix(const vector<float> &k, 
                        vector<vector<float> > &K);
 
-void rotation_matrix(int rank, const vector<vector<float> > &K, 
-                     const float B, 
+void rotation_matrix(const vector<vector<float> > &K, const float B, 
                      vector<vector<float> > &R);
 
 #endif

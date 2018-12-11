@@ -13,7 +13,7 @@ using namespace gio;
 //////////////////////////////////////////////////////
 
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
-               vector<float> theta_cut, vector<float> phi_cut, int rank, int numranks,
+               vector<float> theta_cut, vector<float> phi_cut, int myrank, int numranks,
                bool verbose, bool timeit, bool overwrite, bool positionOnly){
 
     ///////////////////////////////////////////////////////////////
@@ -23,10 +23,10 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
     ///////////////////////////////////////////////////////////////
 
     // find all lc sub directories for each step in step_strings
-    if(rank == 0){ cout << "\nReading directory: " << dir_name << endl; }
+    if(myrank == 0){ cout << "\nReading directory: " << dir_name << endl; }
     vector<string> subdirs;
     getLCSubdirs(dir_name, subdirs);
-    if(rank==0){ 
+    if(myrank==0){ 
         cout << "Found subdirs:" << endl;
         for (vector<string>::const_iterator i = subdirs.begin(); i != subdirs.end(); ++i){
             cout << *i << ' ';
@@ -43,7 +43,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
             break;
         }
     }
-    if(rank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
+    if(myrank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
 
     ///////////////////////////////////////////////////////////////
     //
@@ -66,7 +66,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         if(step == 499){ continue;}
 
         // find header file
-        if(rank == 0){
+        if(myrank == 0){
             cout<< "\n---------- Working on step "<< step_strings[i] <<"----------" << endl; 
         }
         string file_name;
@@ -86,14 +86,14 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
         // create gio reader, open lightcone file header in new scope
         {
-            if(rank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
+            if(myrank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
             GenericIO GIO(MPI_COMM_WORLD, file_name_stream.str(), Method);
             GIO.openAndReadHeader(GenericIO::MismatchRedistribute);
 
             MPI_Barrier(MPI_COMM_WORLD);
             Np = GIO.readNumElems();
-            if(rank == 0){
-                cout << "Number of elements in lc step at rank " << rank << ": " << 
+            if(myrank == 0){
+                cout << "Number of elements in lc step at rank " << myrank << ": " << 
                 Np << endl; 
             }
 
@@ -135,7 +135,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         r.id.resize(Np);
         r.rotation.resize(Np);
         r.replication.resize(Np);
-        if(rank == 0){ cout<<"done resizing"<<endl; }
+        if(myrank == 0){ cout<<"done resizing"<<endl; }
 
         ///////////////////////////////////////////////////////////////
         //
@@ -161,12 +161,12 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
                 cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
                 MPI_Abort(MPI_COMM_WORLD, 0);
             }
-            if(rank == 0){ cout << "Entered subdir: " << step_subdir.str() << endl; }
+            if(myrank == 0){ cout << "Entered subdir: " << step_subdir.str() << endl; }
         }
         // Otherwise, create the subdir
         else{
             mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-            if(rank == 0){ cout << "Created subdir: " << step_subdir.str() << endl; }
+            if(myrank == 0){ cout << "Created subdir: " << step_subdir.str() << endl; }
         }
 
         // create binary files for cutout output
@@ -222,7 +222,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         theta_file_name << step_subdir.str() << "/theta." << step << ".bin";
         phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
-        if(rank == 0){ cout<<"starting to open files"<<endl; }
+        if(myrank == 0){ cout<<"starting to open files"<<endl; }
 
         MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
@@ -249,7 +249,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(phi_file_name.str().c_str()),
                 MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
         
-        if(rank == 0){ cout<<"done opening files"<<endl; }
+        if(myrank == 0){ cout<<"done opening files"<<endl; }
 
         ///////////////////////////////////////////////////////////////
         //
@@ -257,7 +257,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         //
         ///////////////////////////////////////////////////////////////
 
-        if(rank == 0){ cout << "Converting positions..." << endl; }
+        if(myrank == 0){ cout << "Converting positions..." << endl; }
 
         for (int n=0; n<Np; ++n) {
 
@@ -323,7 +323,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
         }
         
         // print out offset vector for verification
-        if(rank == 0){
+        if(myrank == 0){
             if(numranks < 20){
                 cout << "rank object counts: [";
                 for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
@@ -338,11 +338,11 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
             }
         }
 
-        MPI_Offset offset_posvel = sizeof(POSVEL_T) * w.np_offset[rank];
-        MPI_Offset offset_id = sizeof(ID_T) * w.np_offset[rank];
-        MPI_Offset offset_float = sizeof(float) * w.np_offset[rank];
-        MPI_Offset offset_int = sizeof(int) * w.np_offset[rank];
-        MPI_Offset offset_int32 = sizeof(int32_t) * w.np_offset[rank];
+        MPI_Offset offset_posvel = sizeof(POSVEL_T) * w.np_offset[myrank];
+        MPI_Offset offset_id = sizeof(ID_T) * w.np_offset[myrank];
+        MPI_Offset offset_float = sizeof(float) * w.np_offset[myrank];
+        MPI_Offset offset_int = sizeof(int) * w.np_offset[myrank];
+        MPI_Offset offset_int32 = sizeof(int32_t) * w.np_offset[myrank];
 
         // write
         MPI_File_seek(id_file, offset_id, MPI_SEEK_SET);
@@ -424,7 +424,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 //////////////////////////////////////////////////////
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
-               vector<float> halo_pos, vector<float> halo_props, float boxLength, int rank, 
+               vector<float> halo_pos, vector<float> halo_props, float boxLength, int myrank, 
                int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly){
 
     ///////////////////////////////////////////////////////////////
@@ -434,10 +434,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     ///////////////////////////////////////////////////////////////
 
     // find all lc sub directories for each step in step_strings
-    if(rank == 0){ cout << "\nReading directory: " << dir_name << endl; }
+    if(myrank == 0){ cout << "\nReading directory: " << dir_name << endl; }
     vector<string> subdirs;
     getLCSubdirs(dir_name, subdirs);
-    if(rank==0){ 
+    if(myrank==0){ 
         cout << "Found subdirs:" << endl;
         for (vector<string>::const_iterator i = subdirs.begin(); i != subdirs.end(); ++i){
             cout << *i << ' ';
@@ -454,7 +454,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             break;
         }
     }
-    if(rank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
+    if(myrank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
 
     ///////////////////////////////////////////////////////////////
     //
@@ -462,7 +462,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     //
     ///////////////////////////////////////////////////////////////
 
-    if(rank == 0){
+    if(myrank == 0){
         cout<< "\n\n---------- Setting up for coordinate rotation ----------" << endl; 
     }
 
@@ -528,7 +528,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         phi_cut[haloIdx].push_back( (0 - dphi) * 180.0/PI * ARCSEC );
         phi_cut[haloIdx].push_back( (0 + dphi) * 180.0/PI * ARCSEC );
         
-        if(rank == 0){
+        if(myrank == 0){
             cout << "\n--- Target halo " << haloIdx << " ---" << endl; 
             cout << "theta bounds set to: ";
             cout << theta_cut[haloIdx][0]/ARCSEC << "deg -> " << theta_cut[haloIdx][1]/ARCSEC <<"deg"<< endl;
@@ -545,7 +545,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // Using the Rodrigues rotation formula...
         float tmp_rot_pos[] = {halo_r, 0, 0};
         vector<float> rotated_pos(tmp_rot_pos, tmp_rot_pos+3);
-        if(rank == 0){ cout << "\nFinding axis of rotation to move (" << 
+        if(myrank == 0){ cout << "\nFinding axis of rotation to move (" << 
                        this_halo_pos[0]<< ", " << this_halo_pos[1]<< ", " << this_halo_pos[2]<< ") to (" <<
                        rotated_pos[0] << ", " << rotated_pos[1] << ", " << rotated_pos[2] <<
                        ")" << endl; }
@@ -553,19 +553,19 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // get angle and axis of rotation
         normCross(this_halo_pos, rotated_pos, k[haloIdx]);
         B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
-        if(rank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "deg about axis k = (" << 
+        if(myrank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "deg about axis k = (" << 
                        k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl;
         }
         
         // get rotation matrix R
         cross_prod_matrix(k[haloIdx], K[haloIdx]);
-        rotation_matrix(rank, K[haloIdx], B[haloIdx], R[haloIdx]);
+        rotation_matrix(K[haloIdx], B[haloIdx], R[haloIdx]);
 
         // invert rotation matrix R
         R_inv[haloIdx] = invert_3x3(R[haloIdx]);
          
         // verbose output
-        if(rank == 0 and verbose == true){ cout << "\nRotation Matrix is " << endl << 
+        if(myrank == 0 and verbose == true){ cout << "\nRotation Matrix is " << endl << 
                        "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
                                R[haloIdx][0][2] << "}" << endl <<
                        "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
@@ -573,7 +573,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                        "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
                                R[haloIdx][2][2] << "}" << endl;
         }
-        if(rank == 0 and verbose == true){ cout << "Inverted Rotation Matrix is " << endl << 
+        if(myrank == 0 and verbose == true){ cout << "Inverted Rotation Matrix is " << endl << 
                        "{ " << R_inv[haloIdx][0][0] << ", " << R_inv[haloIdx][0][1] << ", " << 
                                R_inv[haloIdx][0][2] << "}" << endl <<
                        "{ " << R_inv[haloIdx][1][0] << ", " << R_inv[haloIdx][1][1] << ", " << 
@@ -638,7 +638,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         C_rot = matVecMul(R_inv[haloIdx], C); 
         D_rot = matVecMul(R_inv[haloIdx], D); 
 
-        if(rank == 0 and verbose == true){ 
+        if(myrank == 0 and verbose == true){ 
                                cout << "\nRotated cartesian vectors pointing toward FOV corners are" << endl <<
                                "A = {" << A_rot[0] << ", " << A_rot[1] << ", " << A_rot[2] << "}" << endl <<
                                "B = {" << B_rot[0] << ", " << B_rot[1] << ", " << B_rot[2] << "}" << endl <<
@@ -665,7 +665,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         D_sph.push_back( acos(D_rot[2]/1) * 180.0/PI * ARCSEC);
         D_sph.push_back( atan(D_rot[1]/D_rot[0]) * 180.0/PI * ARCSEC);
         
-        if(rank == 0 and verbose == true){ 
+        if(myrank == 0 and verbose == true){ 
                                cout << "\nAngular positions of the FOV corners in degrees are" << endl <<
                                "A = {" << A_sph[0]/ARCSEC << ", " << A_sph[1]/ARCSEC <<
                                           "}" << endl <<
@@ -695,7 +695,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) - ang_buffer );
         phi_cut_rough[haloIdx].push_back( *max_element(phi_corners.begin(), phi_corners.end()) + ang_buffer ); 
         
-        if(rank == 0){
+        if(myrank == 0){
             cout << "\nrough theta bounds set to: ";
             cout << theta_cut_rough[haloIdx][0]/ARCSEC << "deg -> " << 
                     theta_cut_rough[haloIdx][1]/ARCSEC <<"deg"<< endl;
@@ -765,7 +765,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(step == 499){ continue;}
 
         // find header file
-        if(rank == 0){
+        if(myrank == 0){
             cout << "\n=================================================" << endl;
             cout << "============== Working on step "<< step_strings[i] <<" ==============\n" << endl; 
         }
@@ -792,7 +792,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
         // create gio reader, open lightcone file header in new scope
         {
-            if(rank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
+            if(myrank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
             GenericIO GIO(MPI_COMM_WORLD, file_name_stream.str(), Method);
             GIO.openAndReadHeader(GenericIO::MismatchRedistribute);
 
@@ -843,13 +843,32 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             r.rotation.resize(Np);
             r.replication.resize(Np);
         }
-        if(rank == 0){ cout<<"done resizing"<<endl; }
+        if(myrank == 0){ cout<<"done resizing"<<endl; }
         
+        // calc d, theta, and phi per particle
+        r.d.resize(Np);
+        r.theta.resize(Np);
+        r.phi.resize(Np);
+                
+        for (int n=0; n<Np; ++n) {
+            // spherical coordinate transformation
+            r.d[n] = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
+            r.theta[n] = acos(r.z[n]/r.d[n]) * 180.0 / PI * ARCSEC;
+            
+            // prevent NaNs on y-z plane
+            if(r.x[n] == 0 && r.y[n] > 0)
+                r.phi[n] = 90.0 * ARCSEC;
+            else if(r.x[n] == 0 && r.y[n] < 0)
+                r.phi[n] = -90.0 * ARCSEC;
+            else
+                r.phi[n] = atan(r.y[n]/r.x[n]) * 180.0 / PI * ARCSEC;
+        }
+
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime();
     
         duration = stop - start;
-        if(rank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
+        if(myrank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
         read_times.push_back(duration);
          
         ///////////////////////////////////////////////////////////////
@@ -884,7 +903,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             totalNp += Np_read_per_rank[ri];
         }
 
-        if(rank == 0){
+        if(myrank == 0){
             cout << "Total number of particles is " << totalNp << endl;
             cout << "Redistributing particles to all from " << numranks - num_readNone << 
                     " of " << numranks << " ranks" << endl;
@@ -920,8 +939,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
      
         for(int n = 0; n < Np; ++n){
             
-            particle_pos nextParticle_pos = {r.x[n], r.y[n], r.z[n], 
-                                             r.a[n], r.id[n], even_redistribute[n]};
+            particle_pos nextParticle_pos = {r.x[n], r.y[n], r.z[n], r.a[n], r.d[n], r.theta[n], 
+                                             r.phi[n], r.id[n], even_redistribute[n]};
             send_particles_pos.push_back(nextParticle_pos);
             
             if(!positionOnly){
@@ -940,7 +959,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // if Np = 12 and numranks = 4, then the above call to comp_rank_scatter will result in
         // even_redistribute = {0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3}, 
         // which indicates the receiving rank of each particle at position i. In the most recent
-        // loop above, we filled the particle struct "rank" field with the contents of 
+        // loop above, we filled the particle struct "myrank" field with the contents of 
         // even_redistribute. So, we can sort the particle objects by that field, in order for our
         // send+offset pair to give the expected result 
         sort(send_particles_pos.begin(), send_particles_pos.end(), comp_rank<particle_pos>);
@@ -970,16 +989,32 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         for(int ri = 0; ri < numranks; ++ri){
             totalNp += Np_recv_per_rank[ri];
         }
-        if(rank == 0){
+        if(myrank == 0){
             cout << "Total number of particles after redistribution is " << totalNp << " (about " << 
                     avg_Np_recv_per_rank << " particles per rank)" << endl;
         }   
 
         MPI_Barrier(MPI_COMM_WORLD);
+
+        // Searching through these particles to perform the cutout later is going to be too 
+        // inefficient unless we prepare out particles for a binary search in at least one 
+        // dimension. We do this by sorting the recieved particles in ascending order of theta
+       
+        // arg sort to map new ordering to recv_particles_vel 
+        vector<int> theta_argSort(Np);
+        int idx=0;
+        std::iota(theta_argSort.begin(), theta_argSort.end(), idx++);
+        sort(theta_argSort.begin(), theta_argSort.end(), 
+             [&](int n, int m){return recv_particles_pos[n].theta < recv_particles_pos[m].theta;} );
+         
+        // sort recv_particles_pos such that theta is in ascending order
+        sort(recv_particles_pos.begin(), recv_particles_pos.end(), comp_by_theta);
+        
+        MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime();
     
         duration = stop - start;
-        if(rank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
+        if(myrank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
         redist_times.push_back(duration);
         
         
@@ -996,7 +1031,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         start = MPI_Wtime();
  
         for(int h=0; h<halo_pos.size(); h+=3){
-            if(rank == 0){
+            if(myrank == 0){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
             }
             int haloIdx = h/3;
@@ -1019,7 +1054,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // binary files isn't always clean. If 'overwrite' is true, the delete 
             // all binary files in the subdir and continue. 
             // Only have rank 0 do this.
-            if(rank == 0){
+            if(myrank == 0){
                 if(dir != NULL){
                     while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
 
@@ -1126,7 +1161,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             theta_file_name << step_subdir.str() << "/theta." << step << ".bin";
             phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
-            if(rank == 0){ cout<<"opening output files"<<endl; }
+            if(myrank == 0){ cout<<"opening output files"<<endl; }
 
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
@@ -1164,109 +1199,114 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // let's also time the computation per-rank
             clock_t thisRank_start = clock();
 
-            if(rank == 0){ cout << "converting positions..." << endl; }
+            if(myrank == 0){ cout << "converting positions..." << endl; }
             
             int cutout_size = 0;
             
             // define vectors joining fov corners to particle (see comments/diagram above)
             vector<float> AM(2);
             vector<float> BM(2);
+        
+            // all of this ranks recieved particles were sorted, after read-in, by their 
+            // "theta" attribute. So, we can do a binary search for our rough theta bounds
+            // to limit our search to an annulus around the sky parallel to the equator...
+            particle_pos left_dummy;
+            left_dummy.theta = theta_cut_rough[haloIdx][0];
+            particle_pos right_dummy;
+            right_dummy.theta = theta_cut_rough[haloIdx][1];
+            
+            auto leftCut_iter = std::lower_bound(recv_particles_pos.begin(), recv_particles_pos.end(), 
+                                                 left_dummy, comp_by_theta);
+            auto rightCut_iter = std::upper_bound(recv_particles_pos.begin(), recv_particles_pos.end(), 
+                                                  right_dummy, comp_by_theta);
+            
+            int minN = std::distance(recv_particles_pos.begin(), leftCut_iter);
+            int maxN = std::distance(recv_particles_pos.begin(), rightCut_iter);
+                            
+            auto posIdx_iter = std::find(theta_argSort.begin(), theta_argSort.end(), 0);
+            int posIdx = std::distance(theta_argSort.begin(), posIdx_iter);
+            
+            // Now, brute force search on phi to finish rough cut out
+            for (int n=minN; n<maxN; ++n) {
+                
+                float d = recv_particles_pos[n].d; 
+                float theta = recv_particles_pos[n].theta;
+                float phi = recv_particles_pos[n].phi;
 
-            for (int n=0; n<Np; ++n) {
-
-                // limit cutout to first octant for speed
-                if (recv_particles_pos[n].x > 0.0 && 
-                    recv_particles_pos[n].y > 0.0 && 
-                    recv_particles_pos[n].z > 0.0){
+                if (phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
+                 
+                    // of the particles surviving the rough cut, let's do a proper rotation 
+                    // on them to find the true cutout memership, and return cluster-centric 
+                    // angular coordinates
+                    
+                    // do coordinate rotation center halo at (r, 90, 0)
+                    // B and k are the angle and axis of rotation, respectively,
+                    // calculated near the beginning of this function
+                    float tmp_v[] = {recv_particles_pos[n].x, recv_particles_pos[n].y, recv_particles_pos[n].z};
+                    vector<float> v(tmp_v, tmp_v+3);
+                    vector<float> v_rot;
+                    v_rot = matVecMul(R[haloIdx], v);
 
                     // spherical coordinate transformation
-                    float d = (float)sqrt( recv_particles_pos[n].x*recv_particles_pos[n].x + 
-                                           recv_particles_pos[n].y*recv_particles_pos[n].y + 
-                                           recv_particles_pos[n].z*recv_particles_pos[n].z);
-                    float theta = acos(recv_particles_pos[n].z/d) * 180.0 / PI * ARCSEC;
-                    float phi;
-                    
+                    d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
+                                    v_rot[2]*v_rot[2]);
+                    float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
+                    float v_phi;
+
                     // prevent NaNs on y-z plane
-                    if(recv_particles_pos[n].x == 0 && recv_particles_pos[n].y > 0)
-                        phi = 90.0 * ARCSEC;
-                    else if(recv_particles_pos[n].x == 0 && recv_particles_pos[n].y < 0)
-                        phi = -90.0 * ARCSEC;
+                    if(v_rot[0] == 0 && v_rot[1] > 0)
+                        v_phi = 90.0 * ARCSEC;
+                    else if(v_rot[0] == 0 && v_rot[1] < 0)
+                        v_phi = -90.0 * ARCSEC;
                     else
-                        phi = atan(recv_particles_pos[n].y/recv_particles_pos[n].x) * 180.0 / PI * ARCSEC;
-                    
-                    // do rough cut first with constant angular bounds
-                    // could make this much faster by sorting theta and/or phi...
-                    if (theta > theta_cut_rough[haloIdx][0] && theta < theta_cut_rough[haloIdx][1] && 
-                        phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
-                     
-                        // of the particles surviving the rough cut, let's do a proper rotation 
-                        // on them to find the true cutout memership, and return cluster-centric 
-                        // angular coordinates
+                        v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
+                 
+                    // do final cut
+                    if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
+                        v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
+
+                        // get redshift from scale factor
+                        float zz = aToZ(recv_particles_pos[n].a);  
                         
-                        // do coordinate rotation center halo at (r, 90, 0)
-                        // B and k are the angle and axis of rotation, respectively,
-                        // calculated near the beginning of this function
-                        float tmp_v[] = {recv_particles_pos[n].x, recv_particles_pos[n].y, recv_particles_pos[n].z};
-                        vector<float> v(tmp_v, tmp_v+3);
-                        vector<float> v_rot;
-                        v_rot = matVecMul(R[haloIdx], v);
+                        // spherical corrdinate transform of rotated positions
+                        w.theta.push_back(v_theta);
+                        w.phi.push_back(v_phi);
 
-                        // spherical coordinate transformation
-                        d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
-                                        v_rot[2]*v_rot[2]);
-                        float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
-                        float v_phi;
-
-                        // prevent NaNs on y-z plane
-                        if(v_rot[0] == 0 && v_rot[1] > 0)
-                            v_phi = 90.0 * ARCSEC;
-                        else if(v_rot[0] == 0 && v_rot[1] < 0)
-                            v_phi = -90.0 * ARCSEC;
-                        else
-                            v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
-                     
-                        // do final cut
-                        if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
-                            v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
-    
-                            // get redshift from scale factor
-                            float zz = aToZ(recv_particles_pos[n].a);  
+                        // other columns
+                        w.x.push_back(recv_particles_pos[n].x);
+                        w.y.push_back(recv_particles_pos[n].y);
+                        w.z.push_back(recv_particles_pos[n].z);
+                        w.redshift.push_back(zz);
+                        w.id.push_back(recv_particles_pos[n].id);
+                        if(!positionOnly){
                             
-                            // spherical corrdinate transform of rotated positions
-                            w.theta.push_back(v_theta);
-                            w.phi.push_back(v_phi);
-
-                            // other columns
-                            w.x.push_back(recv_particles_pos[n].x);
-                            w.y.push_back(recv_particles_pos[n].y);
-                            w.z.push_back(recv_particles_pos[n].z);
-                            w.redshift.push_back(zz);
-                            w.id.push_back(recv_particles_pos[n].id);
-                            if(!positionOnly){
-                                w.vx.push_back(recv_particles_vel[n].vx);
-                                w.vy.push_back(recv_particles_vel[n].vy);
-                                w.vz.push_back(recv_particles_vel[n].vz);
-                                w.rotation.push_back(recv_particles_vel[n].rotation);
-                                w.replication.push_back(recv_particles_vel[n].replication);
-                            }
-                            cutout_size++;
-
-                            /*
-                            // DEBUG
-                            // print out individual particle info
-
-                            if(rank == 1){
-                                cout << endl << "Particle " << recv_particles_pos[n].id << ":   " << endl << 
-                                "x: " << recv_particles_pos[n].x << endl << 
-                                "y: " << recv_particles_pos[n].y << endl << 
-                                "z: " << recv_particles_pos[n].z << endl <<
-                                "a: " << recv_particles_pos[n].a << endl <<
-                                "rs: " << zz << endl <<
-                                "theta: " << v_theta << endl << 
-                                "phi: " << v_phi << endl; 
-                            }
-                            */
+                            // get index of matching entry in recv_particles_vel
+                            auto velIdx_iter = std::find(theta_argSort.begin(), theta_argSort.end(), n);
+                            int velIdx = std::distance(theta_argSort.begin(), velIdx_iter);
+                            
+                            w.vx.push_back(recv_particles_vel[theta_argSort[velIdx]].vx);
+                            w.vy.push_back(recv_particles_vel[theta_argSort[velIdx]].vy);
+                            w.vz.push_back(recv_particles_vel[theta_argSort[velIdx]].vz);
+                            w.rotation.push_back(recv_particles_vel[theta_argSort[velIdx]].rotation);
+                            w.replication.push_back(recv_particles_vel[theta_argSort[velIdx]].replication);
                         }
+                        cutout_size++;
+
+                        /*
+                        // DEBUG
+                        // print out individual particle info
+
+                        if(myrank == 1){
+                            cout << endl << "Particle " << recv_particles_pos[n].id << ":   " << endl << 
+                            "x: " << recv_particles_pos[n].x << endl << 
+                            "y: " << recv_particles_pos[n].y << endl << 
+                            "z: " << recv_particles_pos[n].z << endl <<
+                            "a: " << recv_particles_pos[n].a << endl <<
+                            "rs: " << zz << endl <<
+                            "theta: " << v_theta << endl << 
+                            "phi: " << v_phi << endl; 
+                        }
+                        */
                     }
                 }
             }
@@ -1274,7 +1314,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             
             stop = MPI_Wtime();
             duration = stop - start;
-            if(rank == 0 and timeit == true){ cout << "cutout computation time: " << duration << " s" << endl; }
+            if(myrank == 0 and timeit == true){ cout << "cutout computation time: " << duration << " s" << endl; }
             cutout_times.push_back(duration);
             
             if(verbose == true and timeit == true){
@@ -1288,7 +1328,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 MPI_Allgather(&thisRank_secs, 1, MPI_DOUBLE, 
                               &allRank_secs[0], 1, MPI_DOUBLE, MPI_COMM_WORLD);
      
-                if(rank == 0){
+                if(myrank == 0){
                     double min_compTime = 9999;
                     double max_compTime = 0;
                     double mean_compTime;
@@ -1346,7 +1386,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_Barrier(MPI_COMM_WORLD); 
            
             // print out offset vector for verification
-            if(rank == 0){
+            if(myrank == 0){
                 if(numranks < 20){
                     cout << "rank object counts: [";
                     for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
@@ -1362,11 +1402,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 cout << "Writing files..." << endl;
             }
 
-            MPI_Offset offset_posvel = sizeof(POSVEL_T) * w.np_offset[rank];
-            MPI_Offset offset_id = sizeof(ID_T) * w.np_offset[rank];
-            MPI_Offset offset_float = sizeof(float) * w.np_offset[rank];
-            MPI_Offset offset_int = sizeof(int) * w.np_offset[rank];
-            MPI_Offset offset_int32 = sizeof(int32_t) * w.np_offset[rank];
+            MPI_Offset offset_posvel = sizeof(POSVEL_T) * w.np_offset[myrank];
+            MPI_Offset offset_id = sizeof(ID_T) * w.np_offset[myrank];
+            MPI_Offset offset_float = sizeof(float) * w.np_offset[myrank];
+            MPI_Offset offset_int = sizeof(int) * w.np_offset[myrank];
+            MPI_Offset offset_int32 = sizeof(int32_t) * w.np_offset[myrank];
 
             // write
             MPI_File_seek(id_file, offset_id, MPI_SEEK_SET);
@@ -1440,13 +1480,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             stop = MPI_Wtime();
         
             duration = stop - start;
-            if(rank == 0 and timeit == true){ cout << "write time: " << duration << " s" << endl; }
+            if(myrank == 0 and timeit == true){ cout << "write time: " << duration << " s" << endl; }
             write_times.push_back(duration);
         }
 
     }
     
-    if(rank == 0 and timeit == true){
+    if(myrank == 0 and timeit == true){
         
         cout << "\nread_times = np.array([";
         for(int hh = 0; hh < read_times.size(); ++hh){

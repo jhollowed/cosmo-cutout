@@ -39,11 +39,11 @@ using namespace std;
 using namespace gio;
 
 void processLC(string dir_name, string out_dir, vector<string> step_strings, 
-               vector<float> theta_bounds, vector<float> phi_bounds, int rank, int numranks, 
+               vector<float> theta_bounds, vector<float> phi_bounds, int myrank, int numranks, 
                bool verbose, bool timeit, bool overwrite, bool positionOnly);
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
-               vector<float> halo_pos, vector<float> halo_props, float boxLength, int rank,
+               vector<float> halo_pos, vector<float> halo_props, float boxLength, int myrank,
                int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly);
 
 #endif
