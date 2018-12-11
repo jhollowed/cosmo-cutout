@@ -517,9 +517,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                         this_halo_pos[2]*this_halo_pos[2]);
         
         // get the halo-centric angular bounds of the cutout...
-        // calculate dtheta and dphi in radians
-        float halfBoxLength = boxLength / 2.0;
-        float dtheta = atan(halfBoxLength / halo_r);
+        // calculate dtheta and dphi in radians gven boxlength in arcmin
+        float halfBoxLength = ((boxLength/2.0) / 60) * PI/180.0;
+        float dtheta = halfBoxLength;
         float dphi = dtheta;
 
         // calculate theta_cut and phi_cut, in arcsec, given the specified boxLength
@@ -583,7 +583,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
 
         // now, we have defined theta_cut and phi_cut above in such a way that it 
-        // encapsulates a field of length boxLength at the distance of the target halo
+        // encapsulates a field of angular size boxLength for the target halo
         // *if it were lying on the equator*. With the cutout sized correctly, we can now
         // "point it" at the true halo posiiton to get the real non-constant angular bounds.
         // We do this by defining four unit vectors (A, B, C, D) directed toward the 
@@ -712,19 +712,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         props_file_name << out_dirs[haloIdx]<< "/properties.csv";
         props_file.open(props_file_name.str().c_str());
         
+        props_file << "#halo_redshift" << ", ";
         if(numProps == 3)
-            props_file << "#sod_halo_mass" << "," <<  "sod_halo_radius";
+            props_file << "sod_halo_mass" << ", " <<  "sod_halo_radius";
         else
-            props_file << "#fof_halo_mass";
-        props_file << "," << "halo_redshift" << "," << 
-                             "halo_lc_x" << "," << "halo_lc_y" << "," << "halo_lc_z" <<
-                             "boxRadius_Mpc" << "," << "boxRadius_arcsec" << "\n";
+            props_file << "fof_halo_mass";
+        props_file << ", " << "halo_lc_x" << ", " << "halo_lc_y" << ", " << "halo_lc_z" << ", "
+                              "boxRadius_Mpc" << ", " << "boxRadius_arcsec" << "\n";
         for(int i=0; i<this_halo_props.size(); ++i)
-            props_file << this_halo_props[i] << ",";
+            props_file << this_halo_props[i] << ", ";
         for(int i=0; i<this_halo_pos.size(); ++i)
-            props_file << this_halo_pos[i] << ",";
-       props_file << halfBoxLength << "," << 
-                     dtheta * 180.0/PI * ARCSEC << "\n";
+            props_file << this_halo_pos[i] << ", ";
+       props_file << atan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
        props_file.close();
     }
 

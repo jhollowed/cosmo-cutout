@@ -114,7 +114,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift` - See description above  
   * `x_0`, `y_0`, `z_0` - The comoving Cartesian position, in Mpc/h, of the object on which to center the cutout  
-  * `box length` - the width of the fov around the object of interest, in Mpc/h at the distance of the object (let this value be denoted as *B*, then *d&#x03B8;*, as defined above, is tan<sup>-1</sup>(*B*/2*r*<sub>0</sub>), where *r*<sub>0</sub> is *r* = (*x*<sub>*0*</sub><sup>2</sup> + *y*<sub>*0*</sub><sup>2</sup> + *z*<sub>*0*</sub><sup>2</sup>)<sup>1/2</sup>)  
+  * `box length` - the angular width of the fov around the object of interest, in arcmin (let this value be denoted as *B*, then *d&#x03B8;*, as defined above, *B*/2)  
 
 The `--halo` and `--boxLength` flags can be replaced with `-h` and `-b`. 
 
@@ -209,7 +209,7 @@ where **R** is the rotation matrix through an angle *&#x03B2;* about the axis **
 
 So for each target halo, **k**, *&#x03B2;*, and **R** are each computed once, and **v**<sub>rot</sub> is computed for each object (e.g. simulation particle), from the input lightcone, that should fill the resultant cutout. If we'd like to cut out *M* target halos from a particular lightcone, and have *N* particles filling that lightcone, then that means computing **v**<sub>rot</sub> *M*\**N* times, which may be a very large number. For efficiency, then, we follow this procedure (gorey details found in code comments):
 
-1. Define the geometry of the cutout at the equator of our spherical coordinate system/on the *x*-axis of the base simulation's cartesian coordinate system. This means that *d&#x03B8;* = *d&#x03D5;* = tan<sup>-1</sup>(*B*/2*r*<sub>0</sub>), where *B* is the `--boxLength` argument.
+1. Define the geometry of the cutout at the equator of our spherical coordinate system/on the *x*-axis of the base simulation's cartesian coordinate system. This means that *d&#x03B8;* = *d&#x03D5;* = *B*/2, where *B* is the `--boxLength` argument.
 
 2. Define the vectors pointing to the four corners of the square bounded by *d&#x03B8;* and *d&#x03D5;* as **A**, **B**, **C**, and **D**.
 

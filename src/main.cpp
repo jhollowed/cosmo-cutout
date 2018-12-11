@@ -67,7 +67,7 @@ int main( int argc, char** argv ) {
     // (x, y, z) Mpc/h (intended to be used for cutting out cluster-sized halos):
     //
     // lc_cutout <input lightcone dir> <output dir> <min redshift> <max redshift> 
-    // --halo <x> <y> <z> --boxLength <box length>
+    // --halo <x> <y> <z> --boxLength <box length in arcmin>
     //
     // The --halo and --boxLength flags can be replaced with -h and -b
     //
@@ -330,7 +330,7 @@ int main( int argc, char** argv ) {
                     for(int i=0;i<3;++i){ cout << cart[i] << "=" << haloPos[k+i] << " ";}
                 }
             }
-            cout << endl << "box length: " << boxLength << " Mpc" << endl;
+            cout << endl << "box length: " << boxLength << " arcmin" << endl;
         
         }else{
             cout << "theta bounds: ";
