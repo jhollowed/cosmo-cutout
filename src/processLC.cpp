@@ -1338,12 +1338,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             
             stop = MPI_Wtime();
             duration = stop - start;
-            if(myrank == 0 and timeit==true){
+            if(myrank == 0 and timeit==true and printHalo){
                 cout << "cutout computation time: " << duration << " s" << endl; 
             }
             cutout_times.push_back(duration);
             
-            if(verbose == true and timeit == true){
+            if(verbose == true and timeit == true and printHalo){
                 
                 // check load balancing (all ranks should have taken more or less the same amount of time here)
                 clock_t thisRank_end = clock();
@@ -1412,7 +1412,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_Barrier(MPI_COMM_WORLD); 
            
             // print out offset vector for verification
-            if(myrank == 0){
+            if(myrank == 0 and printHalo){
                 if(numranks < 20){
                     cout << "rank object counts: [";
                     for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
@@ -1506,7 +1506,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             stop = MPI_Wtime();
         
             duration = stop - start;
-            if(myrank == 0 and timeit == true){ cout << "write time: " << duration << " s" << endl; }
+            if(myrank == 0 and timeit == true and printHalo){ 
+                cout << "write time: " << duration << " s" << endl; 
+            }
             write_times.push_back(duration);
         }
 
