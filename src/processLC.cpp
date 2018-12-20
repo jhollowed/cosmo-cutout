@@ -1030,10 +1030,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         start = MPI_Wtime();
  
         for(int h=0; h<halo_pos.size(); h+=3){
-            if(myrank == 0){
+            
+            int haloIdx = h/3;
+            if(myrank == 0 and ((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0)){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
             }
-            int haloIdx = h/3;
             
             // instances of buffer struct at file header for output data
             Buffers_write w;
@@ -1060,14 +1061,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // not empty; abort
                     if(nf > 2 and overwrite == false){
                         closedir(dir);
-                        cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
+                        if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                            cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
+                        }
                         MPI_Abort(MPI_COMM_WORLD, 0);
                     }
 
                     // not empty; overwrite
                     else if(nf > 2 and overwrite == true){
-                        cout << "\nDirectory " << step_subdir.str() << " is non-empty";
-                        cout << " and --overwrite flag was passed; removing binary files here" << endl;
+                        if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                            cout << "\nDirectory " << step_subdir.str() << " is non-empty";
+                            cout << " and --overwrite flag was passed; removing binary files here" << endl;
+                        }
                         while( (d = readdir(dir)) != NULL){
                             
                             // just to be safe
@@ -1079,14 +1084,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
                             // make sure directory only contains binary files
                             if( strcmp(ext, ".bin") != 0){
-                                cout << "\nDirectory contains non-cutout files! Maybe passed wrong path?" << endl;
+                                if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                                    cout << "\nDirectory contains non-cutout files! Maybe passed wrong path?" << endl;
+                                }
                                 MPI_Abort(MPI_COMM_WORLD, 0);
                             }
                             files_to_remove.push_back(full_path);
                         }
 
                         for(int l = 0; l < files_to_remove.size(); ++l){
-                            if(verbose == true){ cout << "\nDELETING " << files_to_remove[l] << endl; }
+                            if(verbose == true and (halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                                cout << "\nDELETING " << files_to_remove[l] << endl;
+                            }
                             remove(files_to_remove[l].c_str());
                         }
                         closedir(dir);
@@ -1095,14 +1104,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // empty but exists; do nothing
                     else{
                         closedir(dir);
-                        cout << "Entered subdir: " << step_subdir.str() << endl;
+                        if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                            cout << "Entered subdir: " << step_subdir.str() << endl;
+                        }
                     }
                 }
                 
                 // doesn't exist; create the subdir
                 else{
                     mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-                    cout << "Created subdir: " << step_subdir.str() << endl;
+                    if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                        cout << "Created subdir: " << step_subdir.str() << endl;
+                    }
                 }
             }
             MPI_Barrier(MPI_COMM_WORLD);
@@ -1160,7 +1173,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             theta_file_name << step_subdir.str() << "/theta." << step << ".bin";
             phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
-            if(myrank == 0){ cout<<"opening output files"<<endl; }
+            if(myrank == 0 and ((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0)){
+                cout<<"opening output files"<<endl;
+            }
 
             MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
                     MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
@@ -1198,7 +1213,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // let's also time the computation per-rank
             clock_t thisRank_start = clock();
 
-            if(myrank == 0){ cout << "converting positions..." << endl; }
+            if(myrank == 0 and ((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0)){
+                cout << "converting positions..." << endl;
+            }
             
             int cutout_size = 0;
             
@@ -1313,7 +1330,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             
             stop = MPI_Wtime();
             duration = stop - start;
-            if(myrank == 0 and timeit == true){ cout << "cutout computation time: " << duration << " s" << endl; }
+            if(myrank == 0 and timeit==true){
+                cout << "cutout computation time: " << duration << " s" << endl; 
+            }
             cutout_times.push_back(duration);
             
             if(verbose == true and timeit == true){
