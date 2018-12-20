@@ -474,6 +474,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     // phi is a vector of vectors (the azimuthal angular bounds per target halo)
     
     int numHalos = halo_pos.size()/3;
+    bool printHalo;
     
     // rotation axis k and angle B per halo
     vector<vector<float> > k(numHalos);
@@ -494,6 +495,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     for(int h=0; h<halo_pos.size(); h+=3){ 
         
         int haloIdx = h/3;
+        printHalo = (numHalos < 20) | (haloIdx%20==0) ? 1:0;
         
         // get next three values in halo_pos
         float tmp_pos[] = {halo_pos[h], halo_pos[h+1], halo_pos[h+2]};
@@ -528,7 +530,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         phi_cut[haloIdx].push_back( (0 - dphi) * 180.0/PI * ARCSEC );
         phi_cut[haloIdx].push_back( (0 + dphi) * 180.0/PI * ARCSEC );
         
-        if(myrank == 0){
+        if(myrank == 0 and printHalo){
             cout << "\n--- Target halo " << haloIdx << " ---" << endl; 
             cout << "theta bounds set to: ";
             cout << theta_cut[haloIdx][0]/ARCSEC << "deg -> " << theta_cut[haloIdx][1]/ARCSEC <<"deg"<< endl;
@@ -545,16 +547,19 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // Using the Rodrigues rotation formula...
         float tmp_rot_pos[] = {halo_r, 0, 0};
         vector<float> rotated_pos(tmp_rot_pos, tmp_rot_pos+3);
-        if(myrank == 0){ cout << "\nFinding axis of rotation to move (" << 
-                       this_halo_pos[0]<< ", " << this_halo_pos[1]<< ", " << this_halo_pos[2]<< ") to (" <<
-                       rotated_pos[0] << ", " << rotated_pos[1] << ", " << rotated_pos[2] <<
-                       ")" << endl; }
+        if(myrank == 0 and printHalo){
+            cout << "\nFinding axis of rotation to move (" << 
+                    this_halo_pos[0]<< ", " << this_halo_pos[1]<< ", " << this_halo_pos[2]<< ") to (" <<
+                    rotated_pos[0] << ", " << rotated_pos[1] << ", " << rotated_pos[2] <<
+                    ")" << endl; 
+        }
 
         // get angle and axis of rotation
         normCross(this_halo_pos, rotated_pos, k[haloIdx]);
         B[haloIdx] = vecPairAngle(this_halo_pos, rotated_pos);
-        if(myrank == 0){ cout << "Rotation is " << B[haloIdx]*(180/PI) << "deg about axis k = (" << 
-                       k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl;
+        if(myrank == 0 and printHalo){
+            cout << "Rotation is " << B[haloIdx]*(180/PI) << "deg about axis k = (" << 
+                    k[haloIdx][0]<< ", " << k[haloIdx][1] << ", " << k[haloIdx][2] << ")" << endl;
         }
         
         // get rotation matrix R
@@ -565,21 +570,23 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         R_inv[haloIdx] = invert_3x3(R[haloIdx]);
          
         // verbose output
-        if(myrank == 0 and verbose == true){ cout << "\nRotation Matrix is " << endl << 
-                       "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
-                               R[haloIdx][0][2] << "}" << endl <<
-                       "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
-                               R[haloIdx][1][2] << "}" << endl <<
-                       "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
-                               R[haloIdx][2][2] << "}" << endl;
+        if(myrank == 0 and verbose == true and printHalo){
+            cout << "\nRotation Matrix is " << endl << 
+                    "{ " << R[haloIdx][0][0] << ", " << R[haloIdx][0][1] << ", " << 
+                            R[haloIdx][0][2] << "}" << endl <<
+                    "{ " << R[haloIdx][1][0] << ", " << R[haloIdx][1][1] << ", " << 
+                            R[haloIdx][1][2] << "}" << endl <<
+                    "{ " << R[haloIdx][2][0] << ", " << R[haloIdx][2][1] << ", " << 
+                            R[haloIdx][2][2] << "}" << endl;
         }
-        if(myrank == 0 and verbose == true){ cout << "Inverted Rotation Matrix is " << endl << 
-                       "{ " << R_inv[haloIdx][0][0] << ", " << R_inv[haloIdx][0][1] << ", " << 
-                               R_inv[haloIdx][0][2] << "}" << endl <<
-                       "{ " << R_inv[haloIdx][1][0] << ", " << R_inv[haloIdx][1][1] << ", " << 
-                               R_inv[haloIdx][1][2] << "}" << endl <<
-                       "{ " << R_inv[haloIdx][2][0] << ", " << R_inv[haloIdx][2][1] << ", " << 
-                               R_inv[haloIdx][2][2] << "}" << endl;
+        if(myrank == 0 and verbose == true and printHalo){
+            cout << "Inverted Rotation Matrix is " << endl << 
+                    "{ " << R_inv[haloIdx][0][0] << ", " << R_inv[haloIdx][0][1] << ", " << 
+                            R_inv[haloIdx][0][2] << "}" << endl <<
+                    "{ " << R_inv[haloIdx][1][0] << ", " << R_inv[haloIdx][1][1] << ", " << 
+                            R_inv[haloIdx][1][2] << "}" << endl <<
+                    "{ " << R_inv[haloIdx][2][0] << ", " << R_inv[haloIdx][2][1] << ", " << 
+                            R_inv[haloIdx][2][2] << "}" << endl;
         }
 
         // now, we have defined theta_cut and phi_cut above in such a way that it 
@@ -638,7 +645,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         C_rot = matVecMul(R_inv[haloIdx], C); 
         D_rot = matVecMul(R_inv[haloIdx], D); 
 
-        if(myrank == 0 and verbose == true){ 
+        if(myrank == 0 and verbose == true and printHalo){ 
                                cout << "\nRotated cartesian vectors pointing toward FOV corners are" << endl <<
                                "A = {" << A_rot[0] << ", " << A_rot[1] << ", " << A_rot[2] << "}" << endl <<
                                "B = {" << B_rot[0] << ", " << B_rot[1] << ", " << B_rot[2] << "}" << endl <<
@@ -665,7 +672,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         D_sph.push_back( acos(D_rot[2]/1) * 180.0/PI * ARCSEC);
         D_sph.push_back( atan(D_rot[1]/D_rot[0]) * 180.0/PI * ARCSEC);
         
-        if(myrank == 0 and verbose == true){ 
+        if(myrank == 0 and verbose == true and printHalo){ 
                                cout << "\nAngular positions of the FOV corners in degrees are" << endl <<
                                "A = {" << A_sph[0]/ARCSEC << ", " << A_sph[1]/ARCSEC <<
                                           "}" << endl <<
@@ -695,7 +702,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         phi_cut_rough[haloIdx].push_back( *min_element(phi_corners.begin(), phi_corners.end()) - ang_buffer );
         phi_cut_rough[haloIdx].push_back( *max_element(phi_corners.begin(), phi_corners.end()) + ang_buffer ); 
         
-        if(myrank == 0){
+        if(myrank == 0 and printHalo){
             cout << "\nrough theta bounds set to: ";
             cout << theta_cut_rough[haloIdx][0]/ARCSEC << "deg -> " << 
                     theta_cut_rough[haloIdx][1]/ARCSEC <<"deg"<< endl;
@@ -1032,7 +1039,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         for(int h=0; h<halo_pos.size(); h+=3){
             
             int haloIdx = h/3;
-            if(myrank == 0 and ((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0)){
+            printHalo = (numHalos < 20) | (haloIdx%20==0) ? 1:0;
+            if(myrank == 0 and printHalo){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
             }
             
@@ -1061,7 +1069,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // not empty; abort
                     if(nf > 2 and overwrite == false){
                         closedir(dir);
-                        if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                        if(printHalo){
                             cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
                         }
                         MPI_Abort(MPI_COMM_WORLD, 0);
@@ -1069,7 +1077,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
                     // not empty; overwrite
                     else if(nf > 2 and overwrite == true){
-                        if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                        if(printHalo){
                             cout << "\nDirectory " << step_subdir.str() << " is non-empty";
                             cout << " and --overwrite flag was passed; removing binary files here" << endl;
                         }
@@ -1084,7 +1092,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
                             // make sure directory only contains binary files
                             if( strcmp(ext, ".bin") != 0){
-                                if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                                if(printHalo){
                                     cout << "\nDirectory contains non-cutout files! Maybe passed wrong path?" << endl;
                                 }
                                 MPI_Abort(MPI_COMM_WORLD, 0);
@@ -1093,7 +1101,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         }
 
                         for(int l = 0; l < files_to_remove.size(); ++l){
-                            if(verbose == true and (halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                            if(verbose == true and (numHalos < 20) | (haloIdx%20==0) ? 1:0){
                                 cout << "\nDELETING " << files_to_remove[l] << endl;
                             }
                             remove(files_to_remove[l].c_str());
@@ -1104,7 +1112,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // empty but exists; do nothing
                     else{
                         closedir(dir);
-                        if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                        if(printHalo){
                             cout << "Entered subdir: " << step_subdir.str() << endl;
                         }
                     }
@@ -1113,7 +1121,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 // doesn't exist; create the subdir
                 else{
                     mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-                    if((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0){
+                    if(printHalo){
                         cout << "Created subdir: " << step_subdir.str() << endl;
                     }
                 }
@@ -1173,7 +1181,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             theta_file_name << step_subdir.str() << "/theta." << step << ".bin";
             phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
-            if(myrank == 0 and ((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0)){
+            if(myrank == 0 and printHalo){
                 cout<<"opening output files"<<endl;
             }
 
@@ -1213,7 +1221,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // let's also time the computation per-rank
             clock_t thisRank_start = clock();
 
-            if(myrank == 0 and ((halo_pos.size() < 20) | (haloIdx%20==0) ? 1:0)){
+            if(myrank == 0 and printHalo){
                 cout << "converting positions..." << endl;
             }
             
