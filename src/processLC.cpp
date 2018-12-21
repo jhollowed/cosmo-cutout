@@ -501,12 +501,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         float tmp_pos[] = {halo_pos[h], halo_pos[h+1], halo_pos[h+2]};
         vector<float> this_halo_pos(tmp_pos, tmp_pos+3);
 
-        // get next two or three values in halo_props (redshift, mass, radius) or (redshift, mass)
-        // last element of tmp_props will be garbage if numProps == 2 (massDef == 'fof'),
-        // but that's okay.
-        float tmp_props[] = {halo_props[h], halo_props[h+1], halo_props[h+2]};
+        // get next three or four values in halo_props (redshift, step, sod_mass, sod_radius) or 
+        // (redshift, step, fof_mass) 
+        // last element of tmp_props will be garbage if numProps == 3 (massDef == 'fof'),
+        // but that's okay. 
         int numProps = halo_props.size() / numHalos;
-        if(numProps != 2 and numProps != 3){
+        float tmp_props[] = {halo_props[numProps*haloIdx], halo_props[numProps*haloIdx+1], 
+                             halo_props[numProps*haloIdx+2], halo_props[numProps*haloIdx+3]};
+        if(numProps != 3 and numProps != 4){
             cout << "Something went wrong... " << numProps << " properties found per halo" << 
                     " in input vectors. Is massDef correct? Please contact developer." << endl;
             MPI_Abort(MPI_COMM_WORLD, 0);
@@ -719,7 +721,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         props_file_name << out_dirs[haloIdx]<< "/properties.csv";
         props_file.open(props_file_name.str().c_str());
         
-        props_file << "#halo_redshift" << ", ";
+        props_file << "#halo_redshift" << ", " << "halo_lc_shell" << ", ";
         if(numProps == 3)
             props_file << "sod_halo_mass" << ", " <<  "sod_halo_radius";
         else

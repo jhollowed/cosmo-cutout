@@ -267,6 +267,7 @@ int main( int argc, char** argv ) {
             // set halo properties to -1 (unknown)
             haloProps.push_back(-1.0); 
             haloProps.push_back(-1.0); 
+            haloProps.push_back(-1.0); 
             if(massDef == "sod")
                 haloProps.push_back(-1.0); 
         }
