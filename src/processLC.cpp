@@ -511,14 +511,15 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(numProps != 3 and numProps != 4){
             cout << "Something went wrong... " << numProps << " properties found per halo" << 
                     " in input vectors. Is massDef correct? Please contact developer." << endl;
-            MPI_Abort(MPI_COMM_WORLD, 0);
+            MPI_Finalize();
+            exit(EXIT_FAILURE);
         } 
         vector<float> this_halo_props(tmp_props, tmp_props+numProps);
         
         // find distance magnitude (new rotated halo position)
         float halo_r = (float)sqrt(this_halo_pos[0]*this_halo_pos[0] + 
-                                        this_halo_pos[1]*this_halo_pos[1] + 
-                                        this_halo_pos[2]*this_halo_pos[2]);
+                                   this_halo_pos[1]*this_halo_pos[1] + 
+                                   this_halo_pos[2]*this_halo_pos[2]);
         
         // get the halo-centric angular bounds of the cutout...
         // calculate dtheta and dphi in radians gven boxlength in arcmin
@@ -656,8 +657,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
 
         // convert vectors A,B,C,D to 2-dimensional spherical coordinate 
-        // vectors {theta, phi} in arcsec
-        
+        // vectors {theta, phi} in arcsec 
         vector<float> A_sph;
         A_sph.push_back( acos(A_rot[2]/1) * 180.0/PI * ARCSEC);
         A_sph.push_back( atan(A_rot[1]/A_rot[0]) * 180.0/PI * ARCSEC);
@@ -1040,6 +1040,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
  
         for(int h=0; h<halo_pos.size(); h+=3){
             
+            int error = 0; 
             int haloIdx = h/3;
             printHalo = (numHalos < 20) | (haloIdx%20==0) ? 1:0;
             if(myrank == 0 and printHalo){
@@ -1065,16 +1066,34 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // all binary files in the subdir and continue. 
             // Only have rank 0 do this.
             if(myrank == 0){
-                if(dir != NULL){
+                
+                // doesn't exist; create the subdir
+                if(dir == NULL){
+                    mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
+                    if(printHalo){
+                        cout << "Created subdir: " << step_subdir.str() << endl;
+                    }
+                }
+                
+                // does exist; handle
+                else{
                     while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
-
-                    // not empty; abort
-                    if(nf > 2 and overwrite == false){
+                    
+                    // empty but exists; do nothing
+                    if(nf<=2){
                         closedir(dir);
                         if(printHalo){
-                            cout << "\nDirectory " << step_subdir.str() << " is non-empty" << endl;
+                            cout << "Entered subdir: " << step_subdir.str() << endl;
                         }
-                        MPI_Abort(MPI_COMM_WORLD, 0);
+                    }
+
+                    // not empty; abort
+                    else if(nf > 2 and overwrite == false){
+                        closedir(dir);
+                        if(printHalo){
+                            cout << "\nDirectory " << step_subdir.str() << " is non-empty; skipping halo" << endl;
+                        }
+                        error = 2;
                     }
 
                     // not empty; overwrite
@@ -1097,38 +1116,34 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                 if(printHalo){
                                     cout << "\nDirectory contains non-cutout files! Maybe passed wrong path?" << endl;
                                 }
-                                MPI_Abort(MPI_COMM_WORLD, 0);
+                                error = 1;
+                                break;
                             }
                             files_to_remove.push_back(full_path);
                         }
-
-                        for(int l = 0; l < files_to_remove.size(); ++l){
-                            if(verbose == true and (numHalos < 20) | (haloIdx%20==0) ? 1:0){
-                                cout << "\nDELETING " << files_to_remove[l] << endl;
+                        
+                        if(error == 0){
+                            for(int l = 0; l < files_to_remove.size(); ++l){
+                                if(verbose == true and (numHalos < 20) | (haloIdx%20==0) ? 1:0){
+                                    cout << "\nDELETING " << files_to_remove[l] << endl;
+                                }
+                                remove(files_to_remove[l].c_str());
                             }
-                            remove(files_to_remove[l].c_str());
                         }
                         closedir(dir);
                     }
-
-                    // empty but exists; do nothing
-                    else{
-                        closedir(dir);
-                        if(printHalo){
-                            cout << "Entered subdir: " << step_subdir.str() << endl;
-                        }
-                    }
-                }
-                
-                // doesn't exist; create the subdir
-                else{
-                    mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-                    if(printHalo){
-                        cout << "Created subdir: " << step_subdir.str() << endl;
-                    }
-                }
+                }    
             }
-            MPI_Barrier(MPI_COMM_WORLD);
+
+            // check for potential errors raised above
+            // error = 1 is fatal and exits. error = 2 just skips the current halo
+            MPI_Bcast(&error, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            if(error == 1){ 
+                MPI_Finalize();
+                exit(EXIT_FAILURE);
+            }
+            else if(error == 2){ continue; }
+
 
             // create binary files for cutout output
             MPI_File id_file;
