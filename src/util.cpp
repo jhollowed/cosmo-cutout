@@ -250,7 +250,7 @@ int getLCFile(string dir, string &file) {
     DIR *dp;
     struct dirent *dirp;
     if((dp  = opendir(dir.c_str())) == NULL) {
-        cout << "Error(" << errno << ") opening lightcone data files" << dir << endl;
+        cout << "Error(" << errno << ") opening lightcone data files at " << dir << endl;
         return errno;
     }
 
