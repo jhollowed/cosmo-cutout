@@ -722,7 +722,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         props_file.open(props_file_name.str().c_str());
         
         props_file << "#halo_redshift" << ", " << "halo_lc_shell" << ", ";
-        if(numProps == 3)
+        if(numProps == 4)
             props_file << "sod_halo_mass" << ", " <<  "sod_halo_radius";
         else
             props_file << "fof_halo_mass";
@@ -991,12 +991,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         vector<size_t> Np_recv_per_rank(numranks); 
         MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_recv_per_rank[0], 1, MPI_INT64_T, 
                       MPI_COMM_WORLD);
-        int avg_Np_recv_per_rank = (int)accumulate(Np_recv_per_rank.begin(), Np_recv_per_rank.end(), 0.0)/numranks;
 
         totalNp = 0;
         for(int ri = 0; ri < numranks; ++ri){
             totalNp += Np_recv_per_rank[ri];
         }
+        size_t avg_Np_recv_per_rank = (size_t)(totalNp/numranks);
         if(myrank == 0){
             cout << "Total number of particles after redistribution is " << totalNp << " (about " << 
                     avg_Np_recv_per_rank << " particles per rank)" << endl;
