@@ -137,7 +137,7 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 192837465 1, 1e13.5, 0.7, 110.0 35.0 20.0
 ...
 ```
-In this example, the first object has an id of `123456789`, a redshift of `0.5`, SO mass of `1e14 M_sun/h`, r<sub>200</sub> radius of `0.9 Mpc/h`, position *x*=`50`, *y*=`55`, *z*=`20 Mpc/h`. All quantities expect for the `id` must be in such a form that they can be parsed as `floats`. The radius is optionally included, and can be removed as long as `massDef` is set to `fof` (see below). 
+In this example, the first object has an id of `123456789`, a redshift of `0.5`, SO mass of `1e14 M_sun/h`, *r*<sub>200</sub> radius of `0.9 Mpc/h`, position *x*=`50`, *y*=`55`, *z*=`20 Mpc/h`. All quantities expect for the `id` must be in such a form that they can be parsed as `floats`. The radius is optionally included, and can be removed as long as `massDef` is set to `fof` (see below). 
 
 The identifiers can be anything, and are parsed as strings (in this way, they can be used for storing other meta data if desired). Under this usage, a new subdirectory will be created per object as listed in the `input object file` under `output directory`, of the form `halo_123456789`, for example. It is then under that directory that simulation step-wise directories will be created (as in the description of the `output directory` argument). It is also within the `output directory` that a `properties.csv` file will be written, which will contain the halo redshift, mass, optionally radius, and information about the scale of the final cutout. Any invalid/missing quantities in that file will be recoded as `-1` (this occurs when running Use Case 2 with `-h` rather than `-f`).
 
