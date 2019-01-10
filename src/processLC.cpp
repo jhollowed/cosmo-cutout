@@ -23,27 +23,34 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
     ///////////////////////////////////////////////////////////////
 
     // find all lc sub directories for each step in step_strings
-    if(myrank == 0){ cout << "\nReading directory: " << dir_name << endl; }
-    vector<string> subdirs;
-    getLCSubdirs(dir_name, subdirs);
-    if(myrank==0){ 
+    string subdirPrefix;
+    int prefixSize;
+    if(myrank == 0){ 
+        cout << "\nReading directory: " << dir_name << endl;
+        
+        vector<string> subdirs;
+        getLCSubdirs(dir_name, subdirs);
+        
         cout << "Found subdirs:" << endl;
         for (vector<string>::const_iterator i = subdirs.begin(); i != subdirs.end(); ++i){
             cout << *i << ' ';
         }
         cout << endl;
-    }
 
-    // find the prefix (chars before the step number) in the subdirectory names.
-    // It is assumed that all subdirs have the same prefix.
-    string subdirPrefix;
-    for(string::size_type j = 0; j < subdirs[0].size(); ++j){
-        if( isdigit(subdirs[0][j]) > 0){
-            subdirPrefix = subdirs[0].substr(0, j);
-            break;
+        // find the prefix (chars before the step number) in the subdirectory names.
+        // It is assumed that all subdirs have the same prefix.
+        for(string::size_type j = 0; j < subdirs[0].size(); ++j){
+            if( isdigit(subdirs[0][j]) > 0){
+                subdirPrefix = subdirs[0].substr(0, j);
+                break;
+            }
         }
+        cout << "Subdir prefix is: " << subdirPrefix << endl;
+        prefixSize = subdirPrefix.size();
     }
-    if(myrank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
+    MPI_Bcast(&prefixSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if(myrank != 0){ subdirPrefix.resize(prefixSize); }
+    MPI_Bcast(const_cast<char*>(subdirPrefix.data()), prefixSize, MPI_CHAR, 0, MPI_COMM_WORLD);
 
     ///////////////////////////////////////////////////////////////
     //
@@ -70,10 +77,17 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
             cout<< "\n---------- Working on step "<< step_strings[i] <<"----------" << endl; 
         }
         string file_name;
+        int fname_size;
         ostringstream file_name_stream;
-        file_name_stream << dir_name << subdirPrefix << step_strings[i];
-
-        getLCFile(file_name_stream.str(), file_name);
+        file_name_stream << dir_name << subdirPrefix << step_strings[i]; 
+        if(myrank == 0){
+            getLCFile(file_name_stream.str(), file_name);
+            fname_size = file_name.size();
+        } 
+        
+        MPI_Bcast(&fname_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if(myrank != 0){ file_name.resize(fname_size); }
+        MPI_Bcast(const_cast<char*>(file_name.data()), fname_size, MPI_CHAR, 0, MPI_COMM_WORLD);
         file_name_stream << "/" << file_name; 
 
         // setup gio
