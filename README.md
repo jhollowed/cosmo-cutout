@@ -104,7 +104,7 @@ The expected angular units are DEGREES. The `--theta` and `--phi` flags can be r
 
 ## Use case 2: Nonlinear angular bounds
 
-Allow the *&#x03B8;* and *&#x03D5;* bounds to be computed internally to obtain a cutout of a certain width (*box length*), in Mpc/h, centered on a certain Cartesian position, (*x&#x2080;*, *y&#x2080;*, *z&#x2080;*) Mpc/h (intended to be used for making cutouts around specific simulation objects, like halos):
+Allow the *&#x03B8;* and *&#x03D5;* bounds to be computed internally to obtain a cutout of a certain width (*box length*), in arcminutes, centered on a certain Cartesian position, (*x&#x2080;*, *y&#x2080;*, *z&#x2080;*) Mpc/h (intended to be used for making cutouts around specific simulation objects, like halos):
 
 ```
 lc_cutout <input lightcone directory> <output directory> <min redshift> <max redshift> --halo <x_0> <y_0> <z_0> --boxLength <box length>
@@ -129,15 +129,15 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 #### Arguments:
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift`, `box length` - See description above.  
-  * `input object file` - A plain text file containing one line per object of interest, which includes an object identifier, a halo redshfit, mass, and optionally a radius, and three Cartesian comoving positions, as such:  
+  * `input object file` - A plain text file containing one line per object of interest, which includes an object identifier, a halo redshfit, the snapshot/lightcone shell of that halo, mass, and optionally a radius, and three Cartesian comoving positions, as such:  
   
 ```
-123456789 0.5, 1e14, 3, 50.0 55.0 20.0
-987654321 0.1, 1e15, 4, 10.0 0.0 30.0
-192837465 1, 1e13.5, 1, 110.0 35.0 20.0
+123456789 0.5, 1e14, 0.9, 50.0 55.0 20.0
+987654321 0.1, 1e15, 1.4, 10.0 0.0 30.0
+192837465 1, 1e13.5, 0.7, 110.0 35.0 20.0
 ...
 ```
-In this example, the first object has an id of `123456789`, a redsshift of `0.5`, mass of `1e14 M_sun/h`, radius of `3 Mpc/h`, position *x*=`50`, *y*=`55`, *z*=`20 Mpc/h`. All quantities expect for the `id` must be in such a form that they can be parsed as `floats`. The radius is optionally included, and can be removed as long as `massDef` is set to `fof` (see below). 
+In this example, the first object has an id of `123456789`, a redsshift of `0.5`, SO mass of `1e14 M_sun/h`, r*&#x2082;**&#x2080;**&#x2080;* radius of `0.9 Mpc/h`, position *x*=`50`, *y*=`55`, *z*=`20 Mpc/h`. All quantities expect for the `id` must be in such a form that they can be parsed as `floats`. The radius is optionally included, and can be removed as long as `massDef` is set to `fof` (see below). 
 
 The identifiers can be anything, and are parsed as strings (in this way, they can be used for storing other meta data if desired). Under this usage, a new subdirectory will be created per object as listed in the `input object file` under `output directory`, of the form `halo_123456789`, for example. It is then under that directory that simulation step-wise directories will be created (as in the description of the `output directory` argument). It is also within the `output directory` that a `properties.csv` file will be written, which will contain the halo redshift, mass, optionally radius, and information about the scale of the final cutout. Any invalid/missing quantities in that file will be recoded as `-1` (this occurs when running Use Case 2 with `-h` rather than `-f`).
 
