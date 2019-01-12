@@ -1322,10 +1322,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
                         // get redshift from scale factor
                         float zz = aToZ(recv_particles_pos[n].a);
-                        if(n % 1000 == 0){
-                            cout << "a = " << recv_particles_pos[n].a << endl;
-                            cout << "zz = " << zz << endl;
-                        }
                         
                         // spherical corrdinate transform of rotated positions
                         w.theta.push_back(v_theta);
@@ -1423,14 +1419,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             //                   write out
             //
             ///////////////////////////////////////////////////////////////
-            
-            if(myrank == 0){
-                cout << "REDSHIFT = [";
-                for(int jj=0; jj < w.redshift.size(); jj++){
-                    cout << w.redshift[jj] << ", ";
-                }
-                cout << "]" << endl;
-            }
 
             // time write out 
             MPI_Barrier(MPI_COMM_WORLD);
