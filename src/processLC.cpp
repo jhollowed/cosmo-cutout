@@ -961,8 +961,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
      
         for(int n = 0; n < Np; ++n){
             
-            particle_pos nextParticle_pos = {r.x[n], r.y[n], r.z[n], r.a[n], r.d[n], r.theta[n], 
-                                             r.phi[n], r.id[n], even_redistribute[n]};
+            particle_pos nextParticle_pos = {r.x[n], r.y[n], r.z[n], r.d[n], r.theta[n], 
+                                             r.phi[n], r.a[n], r.id[n], even_redistribute[n]};
             send_particles_pos.push_back(nextParticle_pos);
             
             if(!positionOnly){
@@ -1321,7 +1321,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
 
                         // get redshift from scale factor
-                        float zz = aToZ(recv_particles_pos[n].a);  
+                        float zz = aToZ(recv_particles_pos[n].a);
+                        if(n % 1000 == 0){
+                            cout << "a = " << recv_particles_pos[n].a << endl;
+                            cout << "zz = " << zz << endl;
+                        }
                         
                         // spherical corrdinate transform of rotated positions
                         w.theta.push_back(v_theta);
@@ -1419,7 +1423,15 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             //                   write out
             //
             ///////////////////////////////////////////////////////////////
-       
+            
+            if(myrank == 0){
+                cout << "REDSHIFT = [";
+                for(int jj=0; jj < w.redshift.size(); jj++){
+                    cout << w.redshift[jj] << ", ";
+                }
+                cout << "]" << endl;
+            }
+
             // time write out 
             MPI_Barrier(MPI_COMM_WORLD);
             start = MPI_Wtime();

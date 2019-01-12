@@ -77,9 +77,9 @@ struct particle_pos {
     POSVEL_T y;
     POSVEL_T z;
     POSVEL_T d;
-    POSVEL_T a;
     float theta;
     float phi;
+    POSVEL_T a;
     ID_T id;
     int myrank;
 };
