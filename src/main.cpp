@@ -309,7 +309,9 @@ int main( int argc, char** argv ) {
             // Otherwise, create the subdir
             else{
                 mkdir(halo_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-                if(myrank == 0){ cout << "Created output directory: " << halo_subdir.str() << endl; }
+                if(myrank == 0 and h%100 == 0){ 
+                    cout << "Created output directory: " << halo_subdir.str() << endl; 
+                }
             }
             halo_out_dirs.push_back(halo_subdir.str());
         }

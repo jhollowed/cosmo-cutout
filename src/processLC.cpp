@@ -509,7 +509,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     for(int h=0; h<halo_pos.size(); h+=3){ 
         
         int haloIdx = h/3;
-        printHalo = (numHalos < 20) | (haloIdx%20==0) ? 1:0;
+        printHalo = (numHalos < 20) | (haloIdx%100==0) ? 1:0;
         
         // get next three values in halo_pos
         float tmp_pos[] = {halo_pos[h], halo_pos[h+1], halo_pos[h+2]};
@@ -1056,7 +1056,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             
             int error = 0; 
             int haloIdx = h/3;
-            printHalo = (numHalos < 20) | (haloIdx%20==0) ? 1:0;
+            printHalo = (numHalos < 20) | (haloIdx%100==0) ? 1:0;
             if(myrank == 0 and printHalo){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
             }
