@@ -748,6 +748,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             props_file << this_halo_pos[i] << ", ";
        props_file << atan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
        props_file.close();
+       if(myrank == 0 and printHalo){ cout << "wrote halo info to properties.csv" << endl; }
     }
 
     ///////////////////////////////////////////////////////////////
@@ -787,16 +788,23 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(step == 499){ continue;}
 
         // find header file
+        string file_name;
+        int fname_size;
+        ostringstream file_name_stream;
+        file_name_stream << dir_name << subdirPrefix << step_strings[i]; 
+        
         if(myrank == 0){
             cout << "\n=================================================" << endl;
             cout << "============== Working on step "<< step_strings[i] <<" ==============\n" << endl; 
-        }
-        string file_name;
-        ostringstream file_name_stream;
-        file_name_stream << dir_name << subdirPrefix << step_strings[i];
-
-        getLCFile(file_name_stream.str(), file_name);
+            
+            getLCFile(file_name_stream.str(), file_name);
+            fname_size = file_name.size();
+        } 
+        MPI_Bcast(&fname_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if(myrank != 0){ file_name.resize(fname_size); }
+        MPI_Bcast(const_cast<char*>(file_name.data()), fname_size, MPI_CHAR, 0, MPI_COMM_WORLD);
         file_name_stream << "/" << file_name; 
+        
 
         ///////////////////////////////////////////////////////////////
         //
