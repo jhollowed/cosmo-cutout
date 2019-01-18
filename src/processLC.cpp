@@ -441,6 +441,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                vector<float> halo_pos, vector<float> halo_props, float boxLength, int myrank, 
                int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly){
 
+
     ///////////////////////////////////////////////////////////////
     //
     //                          Setup
@@ -469,6 +470,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
     }
     if(myrank == 0){ cout << "Subdir prefix is: " << subdirPrefix << endl; }
+
 
     ///////////////////////////////////////////////////////////////
     //
@@ -751,6 +753,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
        if(myrank == 0 and printHalo){ cout << "wrote halo info to properties.csv" << endl; }
     }
 
+
     ///////////////////////////////////////////////////////////////
     //
     //                 Loop over step subdirs
@@ -768,6 +771,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
     vector<double> read_times;
     vector<double> redist_times;
+    vector<double> sort_times;
     vector<double> cutout_times; 
     vector<double> write_times; 
     double start;
@@ -808,7 +812,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
         ///////////////////////////////////////////////////////////////
         //
-        //                        do reading
+        //         do reading + spherical coordinate transform
         //
         ///////////////////////////////////////////////////////////////
         
@@ -878,8 +882,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // calc d, theta, and phi per particle
         r.d.resize(Np);
         r.theta.resize(Np);
-        r.phi.resize(Np);
-                
+        r.phi.resize(Np);    
         for (int n=0; n<Np; ++n) {
             // spherical coordinate transformation
             r.d[n] = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
@@ -900,7 +903,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         duration = stop - start;
         if(myrank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
         read_times.push_back(duration);
-         
+        
+
         ///////////////////////////////////////////////////////////////
         //
         //           evenly distribute particles to all ranks
@@ -1025,11 +1029,26 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }   
 
         MPI_Barrier(MPI_COMM_WORLD);
+        stop = MPI_Wtime(); 
+        duration = stop - start;
+        if(myrank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
+        redist_times.push_back(duration);
+        
+        
+        ///////////////////////////////////////////////////////////////
+        //
+        //           Sort particles by theta for binary search
+        //
+        ///////////////////////////////////////////////////////////////
 
         // Searching through these particles to perform the cutout later is going to be too 
         // inefficient unless we prepare out particles for a binary search in at least one 
         // dimension. We do this by sorting the recieved particles in ascending order of theta
-       
+        
+        // time sort 
+        MPI_Barrier(MPI_COMM_WORLD);
+        start = MPI_Wtime();
+        
         // arg sort to map new ordering to recv_particles_vel 
         vector<int> theta_argSort(Np);
         int idx=0;
@@ -1041,25 +1060,19 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         sort(recv_particles_pos.begin(), recv_particles_pos.end(), comp_by_theta);
         
         MPI_Barrier(MPI_COMM_WORLD);
-        stop = MPI_Wtime();
-    
+        stop = MPI_Wtime(); 
         duration = stop - start;
-        if(myrank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
-        redist_times.push_back(duration);
+        if(myrank == 0 and timeit == true){ cout << "Particle sort time: " << duration << " s" << endl; }
+        sort_times.push_back(duration);
         
         
         ///////////////////////////////////////////////////////////////
         //
-        //           Create output files + write buffers
+        //                 Loop over all target halos
         //
         ///////////////////////////////////////////////////////////////
-
-        // loop over all target halos
-       
-        // time cutout computation 
-        MPI_Barrier(MPI_COMM_WORLD);
-        start = MPI_Wtime();
  
+        MPI_Barrier(MPI_COMM_WORLD);
         for(int h=0; h<halo_pos.size(); h+=3){
             
             int error = 0; 
@@ -1068,6 +1081,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             if(myrank == 0 and printHalo){
                 cout<< "\n---------- cutout at halo "<< h/3 <<"----------" << endl; 
             }
+        
+            
+            ///////////////////////////////////////////////////////////////
+            //
+            //           Create output files + write buffers
+            //
+            ///////////////////////////////////////////////////////////////
             
             // instances of buffer struct at file header for output data
             Buffers_write w;
@@ -1220,36 +1240,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             theta_file_name << step_subdir.str() << "/theta." << step << ".bin";
             phi_file_name << step_subdir.str() << "/phi." << step << ".bin";
 
-            if(myrank == 0 and printHalo){
-                cout<<"opening output files"<<endl;
-            }
-
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(x_file_name.str().c_str()), 
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &x_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(y_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &y_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(z_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &z_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(redshift_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &redshift_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(theta_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
-            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(phi_file_name.str().c_str()),
-                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
-            if(!positionOnly){
-                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vx_file_name.str().c_str()),
-                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
-                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vy_file_name.str().c_str()),
-                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
-                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
-                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
-                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
-                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
-                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
-                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
-            }
             
             ///////////////////////////////////////////////////////////////
             //
@@ -1257,8 +1247,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             //
             ///////////////////////////////////////////////////////////////
         
+            // time cutout computation 
+            MPI_Barrier(MPI_COMM_WORLD);
+            start = MPI_Wtime();
+        
             // let's also time the computation per-rank
             clock_t thisRank_start = clock();
+            clock_t thisRank_end;
 
             if(myrank == 0 and printHalo){
                 cout << "converting positions..." << endl;
@@ -1354,6 +1349,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             w.replication.push_back(recv_particles_vel[theta_argSort[velIdx]].replication);
                         }
                         cutout_size++;
+                        thisRank_end = clock();
 
                         /*
                         // DEBUG
@@ -1385,7 +1381,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             if(verbose == true and timeit == true and printHalo){
                 
                 // check load balancing (all ranks should have taken more or less the same amount of time here)
-                clock_t thisRank_end = clock();
                 clock_t thisRank_time = thisRank_end - thisRank_start;
                 double thisRank_secs = thisRank_time / (double) CLOCKS_PER_SEC;
                 vector<double> allRank_secs(numranks);
@@ -1422,9 +1417,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 }
             }
 
+
             ///////////////////////////////////////////////////////////////
             //
-            //                   write out
+            //                          write out
             //
             ///////////////////////////////////////////////////////////////
 
@@ -1473,7 +1469,22 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_Offset offset_int = sizeof(int) * w.np_offset[myrank];
             MPI_Offset offset_int32 = sizeof(int32_t) * w.np_offset[myrank];
 
-            // write
+            // write... 
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(id_file_name.str().c_str()), 
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &id_file);
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(x_file_name.str().c_str()), 
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &x_file);
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(y_file_name.str().c_str()),
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &y_file);
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(z_file_name.str().c_str()),
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &z_file);
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(theta_file_name.str().c_str()),
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &theta_file);
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(phi_file_name.str().c_str()),
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &phi_file);
+            MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(redshift_file_name.str().c_str()),
+                    MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &redshift_file);
+            
             MPI_File_seek(id_file, offset_id, MPI_SEEK_SET);
             MPI_File_iwrite(id_file, &w.id[0], w.id.size(), MPI_INT64_T, &id_req);
             MPI_Wait(&id_req, MPI_STATUS_IGNORE);
@@ -1502,7 +1513,27 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_File_iwrite(redshift_file, &w.redshift[0], w.redshift.size(), MPI_FLOAT, &redshift_req);
             MPI_Wait(&redshift_req, MPI_STATUS_IGNORE);
             
+            MPI_File_close(&id_file);
+            MPI_File_close(&x_file);
+            MPI_File_close(&y_file);
+            MPI_File_close(&z_file);
+            MPI_File_close(&theta_file);
+            MPI_File_close(&phi_file);
+            MPI_File_close(&redshift_file);
+            
             if(!positionOnly){
+                
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vx_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vx_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vy_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vy_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(vz_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &vz_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(rotation_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &rotation_file);
+                MPI_File_open(MPI_COMM_WORLD, const_cast<char*>(replication_file_name.str().c_str()),
+                        MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &replication_file);
+                
                 MPI_File_seek(vx_file, offset_posvel, MPI_SEEK_SET);
                 MPI_File_iwrite(vx_file, &w.vx[0], w.vx.size(), MPI_FLOAT, &vx_req);
                 MPI_Wait(&vx_req, MPI_STATUS_IGNORE);
@@ -1524,16 +1555,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 MPI_File_iwrite(replication_file, &w.replication[0], w.replication.size(), 
                                 MPI_FLOAT, &replication_req);
                 MPI_Wait(&replication_req, MPI_STATUS_IGNORE);
-            }
-
-            MPI_File_close(&id_file);
-            MPI_File_close(&x_file);
-            MPI_File_close(&y_file);
-            MPI_File_close(&z_file);
-            MPI_File_close(&redshift_file);
-            MPI_File_close(&theta_file);
-            MPI_File_close(&phi_file);
-            if(!positionOnly){
+                
                 MPI_File_close(&vx_file);
                 MPI_File_close(&vy_file);
                 MPI_File_close(&vz_file);
@@ -1566,6 +1588,13 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         for(int hh = 0; hh < redist_times.size(); ++hh){
             cout << redist_times[hh];
             if(hh < redist_times.size()-1){ cout << ", "; }
+        }
+        cout << "]" << endl;
+        
+        cout << "sort_times = np.array([";
+        for(int hh = 0; hh < sort_times.size(); ++hh){
+            cout << sort_times[hh];
+            if(hh < sort_times.size()-1){ cout << ", "; }
         }
         cout << "]" << endl;
         
