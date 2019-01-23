@@ -730,27 +730,37 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
 
         // Write out a csv file to this halo's cutout directory to contain halo properties, 
-        // cutout specifications,  and run meta data
-        
-        ofstream props_file;
-        ostringstream props_file_name; 
-        props_file_name << out_dirs[haloIdx]<< "/properties.csv";
-        props_file.open(props_file_name.str().c_str());
-        
-        props_file << "#halo_redshift" << ", " << "halo_lc_shell" << ", ";
-        if(numProps == 4)
-            props_file << "sod_halo_mass" << ", " <<  "sod_halo_radius";
-        else
-            props_file << "fof_halo_mass";
-        props_file << ", " << "halo_lc_x" << ", " << "halo_lc_y" << ", " << "halo_lc_z" << ", "
-                              "boxRadius_Mpc" << ", " << "boxRadius_arcsec" << "\n";
-        for(int i=0; i<this_halo_props.size(); ++i)
-            props_file << this_halo_props[i] << ", ";
-        for(int i=0; i<this_halo_pos.size(); ++i)
-            props_file << this_halo_pos[i] << ", ";
-       props_file << atan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
-       props_file.close();
-       if(myrank == 0 and printHalo){ cout << "wrote halo info to properties.csv" << endl; }
+        // cutout specifications, and run meta data. By default, skip this step if the property
+        // file already exists. If you've updated the code change the content of that file, 
+        // and want old outputs to be overwritten, then just change forceWrite to true.
+        if(myrank == 0){ 
+            bool forceWrite = false;
+            ofstream props_file;
+            ostringstream props_file_name; 
+            props_file_name << out_dirs[haloIdx]<< "/properties.csv";
+
+            if(does_file_exist(props_file_name.str()) == false or forceWrite == true){
+                props_file.open(props_file_name.str().c_str());
+                
+                props_file << "#halo_redshift" << ", " << "halo_lc_shell" << ", ";
+                if(numProps == 4)
+                    props_file << "sod_halo_mass" << ", " <<  "sod_halo_radius";
+                else
+                    props_file << "fof_halo_mass";
+                props_file << ", " << "halo_lc_x" << ", " << "halo_lc_y" << ", " << "halo_lc_z" << ", "
+                                      "boxRadius_Mpc" << ", " << "boxRadius_arcsec" << "\n";
+                for(int i=0; i<this_halo_props.size(); ++i)
+                    props_file << this_halo_props[i] << ", ";
+                for(int i=0; i<this_halo_pos.size(); ++i)
+                    props_file << this_halo_pos[i] << ", ";
+                props_file << atan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
+                props_file.close();
+                if(printHalo){ cout << "wrote halo info to properties.csv" << endl; }
+            
+            }else{ 
+                if(printHalo){ cout << "properties.csv already exists; skipping write" << endl; }
+            }
+        }
     }
 
 
@@ -800,10 +810,17 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(myrank == 0){
             cout << "\n=================================================" << endl;
             cout << "============== Working on step "<< step_strings[i] <<" ==============\n" << endl; 
+           
+            if(myrank == 0){ cout << "getting lc file..." << endl; } 
             
             getLCFile(file_name_stream.str(), file_name);
             fname_size = file_name.size();
         } 
+            
+        MPI_Barrier(MPI_COMM_WORLD); 
+        if(myrank == 0){ cout << "brodcasting file name..." << endl; } 
+        MPI_Barrier(MPI_COMM_WORLD); 
+        
         MPI_Bcast(&fname_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
         if(myrank != 0){ file_name.resize(fname_size); }
         MPI_Bcast(const_cast<char*>(file_name.data()), fname_size, MPI_CHAR, 0, MPI_COMM_WORLD);
@@ -817,16 +834,27 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         ///////////////////////////////////////////////////////////////
         
         // setup gio
+        MPI_Barrier(MPI_COMM_WORLD); 
+        if(myrank == 0){ cout << "setting up gio..." << endl; } 
+        MPI_Barrier(MPI_COMM_WORLD); 
+        
         size_t Np = 0;
         unsigned Method = GenericIO::FileIOPOSIX;
         const char *EnvStr = getenv("GENERICIO_USE_MPIIO");
         if(EnvStr && string(EnvStr) == "1"){
             Method = GenericIO::FileIOMPI;  
         }
+        
+        MPI_Barrier(MPI_COMM_WORLD); 
+        if(myrank == 0){ cout << "done setting up gio..." << endl; } 
+        MPI_Barrier(MPI_COMM_WORLD); 
 
         // create gio reader, open lightcone file header in new scope
         {
+            MPI_Barrier(MPI_COMM_WORLD); 
             if(myrank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
+            MPI_Barrier(MPI_COMM_WORLD); 
+            
             GenericIO GIO(MPI_COMM_WORLD, file_name_stream.str(), Method);
             GIO.openAndReadHeader(GenericIO::MismatchRedistribute);
 
@@ -1047,7 +1075,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         
         // time sort 
         MPI_Barrier(MPI_COMM_WORLD);
+        cout << "for rank " << myrank << ": " << " Np = " << Np << " :: len(recv) = " << recv_particles_pos.size() << endl;
         start = MPI_Wtime();
+        clock_t thisRank_argstart = clock();
+        clock_t thisRank_argend;
         
         // arg sort to map new ordering to recv_particles_vel 
         vector<int> theta_argSort(Np);
@@ -1055,9 +1086,21 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         std::iota(theta_argSort.begin(), theta_argSort.end(), idx++);
         sort(theta_argSort.begin(), theta_argSort.end(), 
              [&](int n, int m){return recv_particles_pos[n].theta < recv_particles_pos[m].theta;} );
+        
+        thisRank_argend = clock();
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        stop = MPI_Wtime(); 
+        duration = stop - start;
+        if(myrank == 0 and timeit == true){ cout << "Particle argsort time: " << duration << " s" << endl; }
+        start = MPI_Wtime();
          
+        clock_t thisRank_start = clock();
+        clock_t thisRank_end;
+        
         // sort recv_particles_pos such that theta is in ascending order
         sort(recv_particles_pos.begin(), recv_particles_pos.end(), comp_by_theta);
+        thisRank_end = clock();
         
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime(); 
@@ -1065,6 +1108,46 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(myrank == 0 and timeit == true){ cout << "Particle sort time: " << duration << " s" << endl; }
         sort_times.push_back(duration);
         
+        // check load balancing (all ranks should have taken more or less the same amount of time here)
+        clock_t thisRank_argtime = thisRank_argend - thisRank_argstart;
+        double thisRank_argsecs = thisRank_argtime / (double) CLOCKS_PER_SEC;
+        vector<double> allRank_argsecs(numranks);
+        clock_t thisRank_time = thisRank_end - thisRank_start;
+        double thisRank_secs = thisRank_time / (double) CLOCKS_PER_SEC;
+        vector<double> allRank_secs(numranks);
+        
+        MPI_Allgather(&thisRank_argsecs, 1, MPI_DOUBLE, 
+                      &allRank_argsecs[0], 1, MPI_DOUBLE, MPI_COMM_WORLD);
+        MPI_Allgather(&thisRank_secs, 1, MPI_DOUBLE, 
+                      &allRank_secs[0], 1, MPI_DOUBLE, MPI_COMM_WORLD);
+
+        if(myrank == 0){
+            double min_argcompTime = 9999;
+            double max_argcompTime = 0;
+            double mean_argcompTime;
+            double min_compTime = 9999;
+            double max_compTime = 0;
+            double mean_compTime;
+
+            for(int cc = 0; cc < numranks; ++cc){
+                if(allRank_argsecs[cc] < min_argcompTime){ min_argcompTime = allRank_argsecs[cc];}
+                if(allRank_argsecs[cc] > max_argcompTime){ max_argcompTime = allRank_argsecs[cc];}
+                if(allRank_secs[cc] < min_compTime){ min_compTime = allRank_secs[cc];}
+                if(allRank_secs[cc] > max_compTime){ max_compTime = allRank_secs[cc];}
+            }
+
+            mean_argcompTime = accumulate(allRank_argsecs.begin(), allRank_argsecs.end(), 0.0) / allRank_argsecs.size();
+            mean_compTime = accumulate(allRank_secs.begin(), allRank_secs.end(), 0.0) / allRank_secs.size();
+        
+            if(myrank == 0){
+                cout << "[min, mean, max] sort rank argsort times: [" << min_argcompTime << ", "
+                                                                   << mean_argcompTime << ", "
+                                                                   << max_argcompTime << "]" << endl;
+                cout << "[min, mean, max] sort rank sort times: [" << min_compTime << ", "
+                                                                   << mean_compTime << ", "
+                                                                   << max_compTime << "]" << endl;
+            }
+        }
         
         ///////////////////////////////////////////////////////////////
         //

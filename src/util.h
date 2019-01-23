@@ -124,6 +124,7 @@ bool comp_rank(const T &a, const T &b){
 }
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
 bool comp_by_theta(const particle_pos &a, const particle_pos &b);
+bool does_file_exist(string filename);
 
 void readHaloFile(string haloFileName, vector<float> &haloPos,
                   vector<string> &haloTags, vector<float> &haloProps,

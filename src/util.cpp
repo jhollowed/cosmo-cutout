@@ -103,6 +103,21 @@ bool comp_by_theta(const particle_pos &a, const particle_pos &b){
 //======================================================================================
 
 
+bool does_file_exist(string filename){
+    // Checks if a file exists     //
+    // Params:
+    // :param filename: a filename as a string
+    // :return: a boolean value (true if file exists, false if not, 
+    //          or false if file is locked/inaccessible)
+
+    std::ifstream f(filename);
+    return f.good();
+}
+
+
+//======================================================================================
+
+
 void readHaloFile(string haloFileName, vector<float> &haloPos, 
                                        vector<string> &haloTags, 
                                        vector<float> &haloProps,
@@ -137,7 +152,7 @@ void readHaloFile(string haloFileName, vector<float> &haloPos,
     // :param haloPos: float vector to hold halo positions
     // :param haloTags: string vector to hold halo tags
     // :param haloProps: float vector to hold halo info including mass, redshift, 
-    //                  and radius if def='sod'
+    //                   and radius if def='sod'
     // :param massDef: the mass definition given in the ids of the haloFile, either 
     //                 'sod', or 'fof'. Defaults to 'sod'
     
@@ -249,6 +264,7 @@ int getLCFile(string dir, string &file) {
     // open dir/
     DIR *dp;
     struct dirent *dirp;
+
     if((dp  = opendir(dir.c_str())) == NULL) {
         cout << "Error(" << errno << ") opening lightcone data files at " << dir << endl;
         return errno;
