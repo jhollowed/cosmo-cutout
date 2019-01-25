@@ -1075,32 +1075,45 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         
         // time sort 
         MPI_Barrier(MPI_COMM_WORLD);
-        cout << "for rank " << myrank << ": " << " Np = " << Np << " :: len(recv) = " << recv_particles_pos.size() << endl;
+        //cout << "for rank " << myrank << ": " << " Np = " << Np << " :: len(recv) = " << recv_particles_pos.size() << endl;
         start = MPI_Wtime();
-        clock_t thisRank_argstart = clock();
-        clock_t thisRank_argend;
+        //clock_t thisRank_argstart = clock();
+        //clock_t thisRank_argend;
+
+        //if(myrank == 41){
+        //    ofstream fout("data2.dat", ios::out | ios::binary);
+        //    fout.write((char*)&recv_particles_pos[0], recv_particles_pos.size() * sizeof(particle_pos));
+        //    fout.close();
+        //}
         
         // arg sort to map new ordering to recv_particles_vel 
         vector<int> theta_argSort(Np);
         int idx=0;
         std::iota(theta_argSort.begin(), theta_argSort.end(), idx++);
-        sort(theta_argSort.begin(), theta_argSort.end(), 
+        stable_sort(theta_argSort.begin(), theta_argSort.end(), 
              [&](int n, int m){return recv_particles_pos[n].theta < recv_particles_pos[m].theta;} );
         
-        thisRank_argend = clock();
+        //thisRank_argend = clock();
+        //clock_t thisRank_argtime = thisRank_argend - thisRank_argstart;
+        //double thisRank_argsecs = thisRank_argtime / (double) CLOCKS_PER_SEC;
+        //cout << "rank " << myrank << " finished  arg in " << thisRank_argsecs << " s" << endl;
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        stop = MPI_Wtime(); 
-        duration = stop - start;
-        if(myrank == 0 and timeit == true){ cout << "Particle argsort time: " << duration << " s" << endl; }
-        start = MPI_Wtime();
+        //MPI_Barrier(MPI_COMM_WORLD);
+        //stop = MPI_Wtime(); 
+        //duration = stop - start;
+        //if(myrank == 0 and timeit == true){ cout << "Particle argsort time: " << duration << " s" << endl; }
+        //start = MPI_Wtime();
          
-        clock_t thisRank_start = clock();
-        clock_t thisRank_end;
+        //clock_t thisRank_start = clock();
+        //clock_t thisRank_end;
         
         // sort recv_particles_pos such that theta is in ascending order
-        sort(recv_particles_pos.begin(), recv_particles_pos.end(), comp_by_theta);
-        thisRank_end = clock();
+        stable_sort(recv_particles_pos.begin(), recv_particles_pos.end(), comp_by_theta);
+        
+        //thisRank_end = clock();
+        //clock_t thisRank_time = thisRank_end - thisRank_start;
+        //double thisRank_secs = thisRank_time / (double) CLOCKS_PER_SEC;
+        //cout << "rank " << myrank << " finished  in " << thisRank_secs << " s" << endl;
         
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime(); 
@@ -1108,6 +1121,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(myrank == 0 and timeit == true){ cout << "Particle sort time: " << duration << " s" << endl; }
         sort_times.push_back(duration);
         
+        /*
         // check load balancing (all ranks should have taken more or less the same amount of time here)
         clock_t thisRank_argtime = thisRank_argend - thisRank_argstart;
         double thisRank_argsecs = thisRank_argtime / (double) CLOCKS_PER_SEC;
@@ -1148,7 +1162,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                                                    << max_compTime << "]" << endl;
             }
         }
-        
+        */
         ///////////////////////////////////////////////////////////////
         //
         //                 Loop over all target halos
