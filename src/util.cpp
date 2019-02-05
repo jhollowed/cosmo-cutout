@@ -387,6 +387,112 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
 //======================================================================================
 
 
+int prepStepSubdir(string subdir_name, bool overwrite, bool print, bool verbose){
+    // This function opens/creates a directory given by subdir_name and handles its
+    // contents depending on the values of the following arguments. This is used
+    // in processLC.cpp (use case 2) to prepare step-wise cutout subdirectories 
+    // for writing. This function either
+    //
+    // 1) creates a non-existent directory
+    // 2) opens an existing empty directory
+    // 3) throws an error if the directory already exists and is non-empty
+    // 4) opens and clears the contents of the directory if already exists
+    //
+    // Params:
+    // :param subdir_name: the name of the directory to open
+    // :param overwrite: if subdir_name is non-empty, rm all of its contents. If any
+    //                   files ending in any extension other than .bin are found, an
+    //                   error is thrown for safety
+    // :param print: whether or not to print function progress to stdout
+    // :param verbose: whether or not to print extra verbose output
+    // :return: an error code. 0 is no error. 1 means overwrite=true, but non-binary 
+    //          files were unexpectedly found. 2 means the directory was non-empty 
+    //          and overwrite==false. 
+    
+    
+
+    DIR *dir = opendir(subdir_name.c_str());
+    struct dirent *d;
+    char full_path[256];
+    char *ext;
+    int nf = 0;
+    vector<string> files_to_remove;
+    int error = 0;
+    
+    // doesn't exist; create the subdir
+    if(dir == NULL){
+        mkdir(subdir_name.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
+        if(print){
+            cout << "Created subdir: " << subdir_name << endl;
+        }
+    }
+    
+    // does exist; handle
+    else{
+        while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
+        
+        // empty but exists; do nothing
+        if(nf<=2){
+            closedir(dir);
+            if(print){
+                cout << "Entered subdir: " << subdir_name << endl;
+            }
+        }
+
+        // not empty; abort
+        else if(nf > 2 and overwrite == false){
+            closedir(dir);
+            if(print){
+                cout << "\nDirectory " << subdir_name << " is non-empty; skipping halo" << endl;
+            }
+            error = 2;
+        }
+
+        // not empty; overwrite
+        else if(nf > 2 and overwrite == true){
+            if(print){
+                cout << "\nDirectory " << subdir_name << " is non-empty";
+                cout << " and --overwrite flag was passed; removing binary files here" << endl;
+            }
+            while( (d = readdir(dir)) != NULL){
+                
+                // just to be safe
+                if (0==strcmp(d->d_name, ".") || 
+                    0==strcmp(d->d_name, "..")) { continue; }
+
+                sprintf(full_path, "%s%s%s", subdir_name.c_str(), "/", d->d_name);
+                ext = strrchr(d->d_name, '.');
+
+                // make sure directory only contains binary files
+                if( strcmp(ext, ".bin") != 0){
+                    if(print){
+                        cout << "\nDirectory contains non-cutout files! Not deleting anything. " << 
+                                "Maybe passed wrong path?" << endl;
+                    }
+                    error = 1;
+                    break;
+                }
+                files_to_remove.push_back(full_path);
+            }
+            
+            if(error == 0){
+                for(int l = 0; l < files_to_remove.size(); ++l){
+                    if(verbose and print){
+                        cout << "\nDELETING " << files_to_remove[l] << endl;
+                    }
+                    remove(files_to_remove[l].c_str());
+                }
+            }
+        }
+    }    
+    closedir(dir);
+    return error;
+}
+
+
+//======================================================================================
+
+
 //////////////////////////////////////////////////////
 //
 //                cosmo functions

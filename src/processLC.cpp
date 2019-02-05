@@ -730,9 +730,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         }
 
         // Write out a csv file to this halo's cutout directory to contain halo properties, 
-        // cutout specifications, and run meta data. By default, skip this step if the property
-        // file already exists. If you've updated the code change the content of that file, 
-        // and want old outputs to be overwritten, then just change forceWrite to true.
+        // cutout specifications, and run meta data. By default, skip this step if that property
+        // file already exists. 
+        // If the code had been updated to change the content of that file, 
+        // and you want old outputs to be overwritten, then just change forceWrite to true.
         if(myrank == 0){ 
             bool forceWrite = false;
             ofstream props_file;
@@ -754,6 +755,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 for(int i=0; i<this_halo_pos.size(); ++i)
                     props_file << this_halo_pos[i] << ", ";
                 props_file << atan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
+                
                 props_file.close();
                 if(printHalo){ cout << "wrote halo info to properties.csv" << endl; }
             
@@ -1121,88 +1123,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             Buffers_write w;
 
             // open cutout subdirectory for this step...
+            // if step subdir already exists, make sure it's empty, because overwriting
+            // binary files isn't always clean. If 'overwrite' is true, the delete all 
+            // binary files in the subdir and continue. 
+            // Only have rank 0 do this.
             ostringstream step_subdir;
             step_subdir << out_dirs[haloIdx] << subdirPrefix << "Cutout" << step_strings[i];
-            
-            DIR *dir = opendir(step_subdir.str().c_str());
-            struct dirent *d;
-            char full_path[256];
-            char *ext;
-            int nf = 0;
-            vector<string> files_to_remove;
-
-            // if subdir already exists, make sure it's empty, because overwriting
-            // binary files isn't always clean. If 'overwrite' is true, the delete 
-            // all binary files in the subdir and continue. 
-            // Only have rank 0 do this.
-            if(myrank == 0){
-                
-                // doesn't exist; create the subdir
-                if(dir == NULL){
-                    mkdir(step_subdir.str().c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH);
-                    if(printHalo){
-                        cout << "Created subdir: " << step_subdir.str() << endl;
-                    }
-                }
-                
-                // does exist; handle
-                else{
-                    while((d = readdir(dir)) != NULL){ if(++nf>2){ break;} }
-                    
-                    // empty but exists; do nothing
-                    if(nf<=2){
-                        closedir(dir);
-                        if(printHalo){
-                            cout << "Entered subdir: " << step_subdir.str() << endl;
-                        }
-                    }
-
-                    // not empty; abort
-                    else if(nf > 2 and overwrite == false){
-                        closedir(dir);
-                        if(printHalo){
-                            cout << "\nDirectory " << step_subdir.str() << " is non-empty; skipping halo" << endl;
-                        }
-                        error = 2;
-                    }
-
-                    // not empty; overwrite
-                    else if(nf > 2 and overwrite == true){
-                        if(printHalo){
-                            cout << "\nDirectory " << step_subdir.str() << " is non-empty";
-                            cout << " and --overwrite flag was passed; removing binary files here" << endl;
-                        }
-                        while( (d = readdir(dir)) != NULL){
-                            
-                            // just to be safe
-                            if (0==strcmp(d->d_name, ".") || 
-                                0==strcmp(d->d_name, "..")) { continue; }
-
-                            sprintf(full_path, "%s%s%s", step_subdir.str().c_str(), "/", d->d_name);
-                            ext = strrchr(d->d_name, '.');
-
-                            // make sure directory only contains binary files
-                            if( strcmp(ext, ".bin") != 0){
-                                if(printHalo){
-                                    cout << "\nDirectory contains non-cutout files! Maybe passed wrong path?" << endl;
-                                }
-                                error = 1;
-                                break;
-                            }
-                            files_to_remove.push_back(full_path);
-                        }
-                        
-                        if(error == 0){
-                            for(int l = 0; l < files_to_remove.size(); ++l){
-                                if(verbose == true and (numHalos < 20) | (haloIdx%20==0) ? 1:0){
-                                    cout << "\nDELETING " << files_to_remove[l] << endl;
-                                }
-                                remove(files_to_remove[l].c_str());
-                            }
-                        }
-                        closedir(dir);
-                    }
-                }    
+            if(myrank == 0){ 
+                error = prepStepSubdir(step_subdir.str(), overwrite, printHalo, verbose);
             }
 
             // check for potential errors raised above
@@ -1216,44 +1144,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
 
 
             // create binary files for cutout output
-            MPI_File id_file;
-            MPI_File redshift_file;
-            MPI_File x_file;
-            MPI_File y_file;
-            MPI_File z_file;
-            MPI_File vx_file;
-            MPI_File vy_file;
-            MPI_File vz_file;
-            MPI_File rotation_file;
-            MPI_File replication_file;
-            MPI_File theta_file;
-            MPI_File phi_file;
-
-            MPI_Request id_req;
-            MPI_Request redshift_req;
-            MPI_Request x_req;
-            MPI_Request y_req;
-            MPI_Request z_req;
-            MPI_Request vx_req;
-            MPI_Request vy_req;
-            MPI_Request vz_req;
-            MPI_Request rotation_req;
-            MPI_Request replication_req;
-            MPI_Request theta_req;
-            MPI_Request phi_req;
+            MPI_File id_file, x_file, y_file, z_file, vx_file, vy_file, vz_file,
+                     redshift_file, theta_file, phi_file,
+                     rotation_file, replication_file;
             
-            ostringstream id_file_name;
-            ostringstream redshift_file_name;
-            ostringstream x_file_name;
-            ostringstream y_file_name;
-            ostringstream z_file_name;
-            ostringstream vx_file_name;
-            ostringstream vy_file_name;
-            ostringstream vz_file_name;
-            ostringstream rotation_file_name;
-            ostringstream replication_file_name;
-            ostringstream theta_file_name;
-            ostringstream phi_file_name; 
+            MPI_Request id_req, x_req, y_req, z_req, vx_req, vy_req, vz_req,
+                        redshift_req, theta_req, phi_req,
+                        rotation_req, replication_req;
+            
+            ostringstream id_file_name, x_file_name, y_file_name, z_file_name, 
+                          vx_file_name, vy_file_name, vz_file_name,
+                          redshift_file_name, theta_file_name, phi_file_name,
+                          rotation_file_name, replication_file_name;
 
             id_file_name << step_subdir.str() << "/id." << step << ".bin";
             redshift_file_name << step_subdir.str() << "/redshift." << step << ".bin";
@@ -1604,6 +1506,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     }
     
     if(myrank == 0 and timeit == true){
+
+        // print timing arrays out in a form ready for copy&paste into python...
         
         cout << "\nread_times = np.array([";
         for(int hh = 0; hh < read_times.size(); ++hh){

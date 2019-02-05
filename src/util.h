@@ -122,8 +122,11 @@ bool comp_rank(const T &a, const T &b){
 
     return a.myrank < b.myrank;
 }
+
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
+
 bool comp_by_theta(const particle_pos &a, const particle_pos &b);
+
 bool does_file_exist(string filename);
 
 void readHaloFile(string haloFileName, vector<float> &haloPos,
@@ -135,6 +138,8 @@ int getLCSubdirs(string dir, vector<string> &subdirs);
 int getLCFile(string dir, string &file);
 
 int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_strings);
+
+int prepStepSubdir(string subdir_name, bool overwrite, bool print, bool verbose);
 
 
 //////////////////////////////////////////////////////
