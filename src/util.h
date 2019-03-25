@@ -150,7 +150,9 @@ int prepStepSubdir(string subdir_name, bool overwrite, bool print, bool verbose)
 
 float aToZ(float a);
 
-float zToStep(float z, int totSteps=500, float maxZ=200.0);
+int zToStep(float z, int totSteps=499, float maxZ=200.0);
+
+float stepToZ(float step, int totSteps=499, float maxZ=200.0);
 
 
 //////////////////////////////////////////////////////

@@ -140,8 +140,9 @@ void readHaloFile(string haloFileName, vector<float> &haloPos,
     // - The tags are expected to be able to be cast as strings
     // - The redshifts, masses, and radii are expected to be able to be cast as floats.
     // - The shell is expected to be a snapshot timestep number that can be cast as an int
-    // -  The radius can be omitted if the argument massDef=='fof'. If the radius is omitted
-    //    and the massDef arg is not set properly, or vice-verse, everything will break!
+    // -  The radius and concentration can be omitted if the argument massDef=='fof'. 
+    //    If those quantities are omitted and the massDef arg is not set properly, or vice-verse, 
+    //    everything will break!
     //  
     // A code module to generate such a text file for a given HACC simulation can be cloned at  
     // https://github.com/jhollowed/cosmology/blob/master/lightcone/list_lc_halos.py
@@ -514,7 +515,7 @@ float aToZ(float a) {
 //======================================================================================
 
 
-float zToStep(float z, int totSteps, float maxZ){
+int zToStep(float z, int totSteps, float maxZ){
     // Function to convert a redshift to a step number, rounding 
     // toward a = 0.
     //
@@ -530,11 +531,36 @@ float zToStep(float z, int totSteps, float maxZ){
 
     float amin = 1/(maxZ + 1);
     float amax = 1.0;
-    float adiff = (amax-amin)/(totSteps-1);
+    float adiff = (amax-amin)/(totSteps);
     
     float a = 1/(1+z);
     int step = floor((a-amin) / adiff);
     return step;
+}
+
+
+//======================================================================================
+
+
+float stepToZ(float step, int totSteps, float maxZ){
+    // Function to convert a step number to a redshift
+    //
+    // Params:
+    // :param step: the input step
+    // :totSteps: the total number of steps of the simulation of 
+    //            interest. Note-- the initial conditions are not 
+    //            a step! totSteps should be the maximum snapshot 
+    //            number.
+    // :maxZ: the initial redshift of the simulation
+    // :return: the redshift corresponding to the input simulation step
+
+    float amin = 1/(maxZ + 1);
+    float amax = 1.0;
+    float adiff = (amax-amin)/(totSteps);
+    
+    float a = amin + (adiff*step);
+    float z = 1/a - 1;
+    return z;
 }
 
 

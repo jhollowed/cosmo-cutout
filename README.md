@@ -102,6 +102,12 @@ and redshift range...
 
 The expected angular units are DEGREES. The `--theta` and `--phi` flags can be replaced with `-t` and `-p`.
 
+The `<min redshift>` and `<max redshift>` arguments can also be replaced with snapshot numbers, rather than 
+redshifts. The bounds, in either case, should be sommensurate with the argument order (that is, if using snapshots,
+`<min redshift>` should be replaced with the *larger* time step number, e.g. redshift bounds [0.0, 1.0] are 
+equivalent to snapshot bounds [499, 247]). By default, if both `<min redshfit>` and `,max redshift.` are larger 
+than 20, it is assumed that the user intends the bounds to be snapshot numbers.
+
 ## Use case 2: Nonlinear angular bounds
 
 Allow the *&#x03B8;* and *&#x03D5;* bounds to be computed internally to obtain a cutout of a certain width (*box length*), in arcminutes, centered on a certain Cartesian position, (*x&#x2080;*, *y&#x2080;*, *z&#x2080;*) Mpc/h (intended to be used for making cutouts around specific simulation objects, like halos):

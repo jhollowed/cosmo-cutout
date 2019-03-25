@@ -169,11 +169,28 @@ int main( int argc, char** argv ) {
                    cout << out_dir << endl;}
 
     // build step_strings vector by locating the step present in the lightcone
-    // data directory that is nearest the redshift requested by the user
-    float minZ = atof(argv[3]);
-    float maxZ = atof(argv[4]);
-    int maxStep = zToStep(minZ);    
-    int minStep = zToStep(maxZ);    
+    // data directory that is nearest the redshift (or snapshot) requested by the user
+    // If args 2 and 3 are both above 20, assume the bounds are being given by snapshot 
+    // number, otherwise assume redshift
+    float minBound = atof(argv[3]);
+    float maxBound = atof(argv[4]);
+    int minStep;
+    int maxStep;
+    float minZ;
+    float maxZ;
+    
+    if(minBound > 20 and maxBound > 20){
+        maxStep = int(minBound);
+        minStep = int(maxBound);
+        maxZ = stepToZ(minStep);
+        minZ = stepToZ(maxStep);
+    }
+    else{
+        minZ = minBound;
+        maxZ = maxBound;
+        maxStep = zToStep(minZ);    
+        minStep = zToStep(maxZ);
+    }
     
     vector<string> step_strings;
     getLCSteps(maxStep, minStep, input_lc_dir, step_strings);
