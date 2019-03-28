@@ -304,7 +304,7 @@ int getLCFile(string dir, string &file) {
 
 int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_strings){
     // This function finds all simulation steps that are present in a lightcone
-    // output directory that are above some specified minimum step number. The 
+    // output directory that are within some specified timestep range. The 
     // expected directory structure is that given in Figure 8 of Creating 
     // Lightcones in HACC; there should be a top directory (string dir) under 
     // which is a subdirectory for each step that ran through the lightcone code. 
@@ -327,18 +327,7 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
     //             in the documentation comments under the function header for
     //             getLCSubdirs()
     // :param step_strings: a vector to contain steps found in the lightcone
-    //                      output, as strings. The steps given are all of those 
-    //                      that are maxStep >= step >= minStep. However, if there 
-    //                      is no step = minStep in the lc output, then accept the 
-    //                      largest step that satisfies step < minStep. This ensures 
-    //                      that users will preferntially recieve a slightly deeper 
-    //                      cutout than desired, rather than slightly shallower, if the 
-    //                      choice must be made. (e.g. if minStep=300, and the only 
-    //                      nearby steps present in the output are 299 and 301, 
-    //                      299 will be the minimum step written to step_strings). And, 
-    //                      if no step exists that satisfies step > maxStep, then return
-    //                      the smallest step that satisfies step < maxStep (symmetric 
-    //                      to what was just described above for the higher redshift end)
+    //                      output, as strings, which satisfy maxStep >= step >= minStep. 
     // :return: none
 
     // find all lc step subdirs
@@ -356,28 +345,15 @@ int getLCSteps(int maxStep, int minStep, string dir, vector<string> &step_string
         }   
     }
 
-    // identify the lowest step to push to step_strings (see remarks at 
-    // function header)
+    // fill step_strings vector (see remarks at function header)
     sort(stepsAvail.begin(), stepsAvail.end());
-    int hitMaxStep = 0;
-    if(maxStep > 487){ hitMaxStep = 1;}
      
     for(int k=0; k<stepsAvail.size(); ++k){
-
-        if(hitMaxStep==0){
-            if(stepsAvail[ stepsAvail.size() - (k+1) ] < maxStep){
-                hitMaxStep = 1;
-            }
-            continue;
-        }
-        
-        ostringstream stepStringStream;
-        stepStringStream << stepsAvail[ stepsAvail.size() - (k+1) ];
-        const string& stepString = stepStringStream.str(); 
-        step_strings.push_back( stepString );
-        
-        if( stepsAvail[ stepsAvail.size() - (k+1) ] <= minStep){
-            break;
+        if(stepsAvail[k] <= maxStep and stepsAvail[k] >= minStep){
+            ostringstream stepStringStream;
+            stepStringStream << stepsAvail[k];
+            const string& stepString = stepStringStream.str(); 
+            step_strings.push_back( stepString );
         }
     }
 
