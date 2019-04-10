@@ -213,6 +213,8 @@ int main( int argc, char** argv ) {
     bool timeit = false;
     bool overwrite = false;
     bool positionOnly = false;
+    bool forceWriteProps = false;
+    bool propsOnly = false;
     string massDef="sod";
 
     // check that supplied arguments are valid
@@ -287,6 +289,8 @@ int main( int argc, char** argv ) {
             haloProps.push_back(-1.0); 
             if(massDef == "sod")
                 haloProps.push_back(-1.0); 
+                haloProps.push_back(-1.0); 
+                haloProps.push_back(-1.0); 
         }
         else if(strcmp(argv[i],"-f")==0 || strcmp(argv[i],"--haloFile")==0){
             string haloFileName(argv[++i]);
@@ -303,6 +307,12 @@ int main( int argc, char** argv ) {
         }
         else if (strcmp(argv[i],"--posOnly") == 0){
             positionOnly = true;
+        }
+        else if (strcmp(argv[i],"--forceWriteProps") == 0){
+            forceWriteProps = true;
+        }
+        else if (strcmp(argv[i],"--propsOnly") == 0){
+            propsOnly = true;
         }
     }
 
@@ -375,7 +385,8 @@ int main( int argc, char** argv ) {
 
     if(customHalo || customHaloFile){
         processLC(input_lc_dir, halo_out_dirs, step_strings, haloPos, haloProps, 
-                  boxLength, myrank, numranks, verbose, timeit, overwrite, positionOnly);
+                  boxLength, myrank, numranks, verbose, timeit, overwrite, positionOnly, 
+                  forceWriteProps, propsOnly);
     }else{
         processLC(input_lc_dir, out_dir, step_strings, theta_cut, phi_cut, 
                   myrank, numranks, verbose, timeit, overwrite, positionOnly);

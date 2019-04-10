@@ -439,7 +439,8 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
                vector<float> halo_pos, vector<float> halo_props, float boxLength, int myrank, 
-               int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly){
+               int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly, 
+               bool forceWriteProps, bool propsOnly){
 
 
     ///////////////////////////////////////////////////////////////
@@ -517,14 +518,16 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         float tmp_pos[] = {halo_pos[h], halo_pos[h+1], halo_pos[h+2]};
         vector<float> this_halo_pos(tmp_pos, tmp_pos+3);
 
-        // get next three or four values in halo_props (redshift, step, sod_mass, sod_radius) or 
+        // get next three or four values in halo_props 
+        // (redshift, step, sod_mass, sod_radius, sod_concentration, sod_concentration_error) or 
         // (redshift, step, fof_mass) 
-        // last element of tmp_props will be garbage if numProps == 3 (massDef == 'fof'),
+        // last 3 elements of tmp_props will be garbage if numProps == 3 (massDef == 'fof'),
         // but that's okay. 
         int numProps = halo_props.size() / numHalos;
         float tmp_props[] = {halo_props[numProps*haloIdx], halo_props[numProps*haloIdx+1], 
-                             halo_props[numProps*haloIdx+2], halo_props[numProps*haloIdx+3]};
-        if(numProps != 3 and numProps != 4){
+                             halo_props[numProps*haloIdx+2], halo_props[numProps*haloIdx+3],
+                             halo_props[numProps*haloIdx+4], halo_props[numProps*haloIdx+5]};
+        if(numProps != 3 and numProps != 6){
             cout << "Something went wrong... " << numProps << " properties found per halo" << 
                     " in input vectors. Is massDef correct? Please contact developer." << endl;
             MPI_Finalize();
@@ -735,27 +738,28 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // If the code had been updated to change the content of that file, 
         // and you want old outputs to be overwritten, then just change forceWrite to true.
         if(myrank == 0){ 
-            bool forceWrite = false;
             ofstream props_file;
             ostringstream props_file_name; 
             props_file_name << out_dirs[haloIdx]<< "/properties.csv";
 
-            if(does_file_exist(props_file_name.str()) == false or forceWrite == true){
+            if(does_file_exist(props_file_name.str()) == false or forceWriteProps == true){
                 props_file.open(props_file_name.str().c_str());
                 
                 props_file << "#halo_redshift" << ", " << "halo_lc_shell" << ", ";
-                if(numProps == 4)
-                    props_file << "sod_halo_mass" << ", " <<  "sod_halo_radius";
+                if(numProps == 6)
+                    props_file << "sod_halo_mass" << ", " <<  "sod_halo_radius" << ", " 
+                               << "sod_halo_cdelta" << ", " << "sod_halo_cdelta_error";
                 else
                     props_file << "fof_halo_mass";
                 props_file << ", " << "halo_lc_x" << ", " << "halo_lc_y" << ", " << "halo_lc_z" << ", "
-                                      "boxRadius_Mpc" << ", " << "boxRadius_arcsec" << "\n";
+                           << "boxRadius_Mpc" << ", " << "boxRadius_arcsec" << "\n";
+
                 for(int i=0; i<this_halo_props.size(); ++i)
                     props_file << this_halo_props[i] << ", ";
                 for(int i=0; i<this_halo_pos.size(); ++i)
                     props_file << this_halo_pos[i] << ", ";
                 props_file << atan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
-                
+                 
                 props_file.close();
                 if(printHalo){ cout << "wrote halo info to properties.csv" << endl; }
             
@@ -763,6 +767,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 if(printHalo){ cout << "properties.csv already exists; skipping write" << endl; }
             }
         }
+    }
+
+    if(propsOnly == true){
+        return;
     }
 
 

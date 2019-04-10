@@ -44,6 +44,7 @@ void processLC(string dir_name, string out_dir, vector<string> step_strings,
 
 void processLC(string dir_name, vector<string> out_dirs, vector<string> step_strings, 
                vector<float> halo_pos, vector<float> halo_props, float boxLength, int myrank,
-               int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly);
+               int numranks, bool verbose, bool timeit, bool overwrite, bool positionOnly, 
+               bool forceWriteProps, bool propsOnly);
 
 #endif

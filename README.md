@@ -135,17 +135,17 @@ lc_cutout <input lightcone directory> <output directory> <min redshift> <max red
 #### Arguments:
 
   * `input lightcone directory`, `output directory`, `min redshift`, `max redshift`, `box length` - See description above.  
-  * `input object file` - A plain text file containing one line per object of interest, which includes an object identifier, a halo redshfit, the snapshot/lightcone shell of that halo, mass, and optionally a radius, and three Cartesian comoving positions, as such:  
+  * `input object file` - A plain text file containing one line per object of interest, which includes an object identifier, a halo redshfit, the snapshot/lightcone shell of that halo, a mass, optionally three SOD quantities (radius, concentration, concentration error), and finally three Cartesian comoving positions, as such:  
   
 ```
-123456789 0.5, 1e14, 0.9, 50.0 55.0 20.0
-987654321 0.1, 1e15, 1.4, 10.0 0.0 30.0
-192837465 1, 1e13.5, 0.7, 110.0 35.0 20.0
+123456789 0.5, 1e14, 0.9, 3.0 1.0 50.0 55.0 20.0
+987654321 0.1, 1e15, 1.4, 2.0 0.66 10.0 0.0 30.0
+192837465 1, 1e13.5, 0.7, 4.5 1.5 110.0 35.0 20.0
 ...
 ```
-In this example, the first object has an id of `123456789`, a redshift of `0.5`, SO mass of `1e14 M_sun/h`, *r*<sub>200</sub> radius of `0.9 Mpc/h`, position *x*=`50`, *y*=`55`, *z*=`20 Mpc/h`. All quantities expect for the `id` must be in such a form that they can be parsed as `floats`. The radius is optionally included, and can be removed as long as `massDef` is set to `fof` (see below). 
+In this example, the first object has an id of `123456789`, a redshift of `0.5`, SO *m*<sub>200</sub> mass of `1e14 M_sun/h`, *r*<sub>200</sub> radius of `0.9 Mpc/h`, concentration 3.0*&#177*1.0, and position *x*=`50`, *y*=`55`, *z*=`20 Mpc/h`. All quantities expect for the `id` must be in such a form that they can be parsed as `floats`. The radius and concentration quantites are optionally included, and can be removed as long as `massDef` is set to `fof` (see below). 
 
-The identifiers can be anything, and are parsed as strings (in this way, they can be used for storing other meta data if desired). Under this usage, a new subdirectory will be created per object as listed in the `input object file` under `output directory`, of the form `halo_123456789`, for example. It is then under that directory that simulation step-wise directories will be created (as in the description of the `output directory` argument). It is also within the `output directory` that a `properties.csv` file will be written, which will contain the halo redshift, mass, optionally radius, and information about the scale of the final cutout. Any invalid/missing quantities in that file will be recoded as `-1` (this occurs when running Use Case 2 with `-h` rather than `-f`).
+The identifiers can be anything, and are parsed as strings (in this way, they can be used for storing other meta data if desired). Under this usage, a new subdirectory will be created per object as listed in the `input object file` under `output directory`, of the form `halo_123456789`, for example. It is then under that directory that simulation step-wise directories will be created (as in the description of the `output directory` argument). It is also within the `output directory` that a `properties.csv` file will be written, which will contain the halo redshift, mass, optional SO quantities, and information about the scale of the final cutout. Any invalid/missing quantities in that file will be recorded as `-1` (this occurs when running Use Case 2 with `-h` rather than `-f`).
 
 The `--haloFile` option can also be specified with `-f` (and, as above, `--boxLength` with `-b`). The cutouts for each of these objects will now be performed serially, with the lightcone read-in happening only once.
 
@@ -242,7 +242,11 @@ If the 5 steps above don't make much sense, please let me know (contact info bel
 
 `--posOnly` will cause only particle positions, ids, and redshifts to be output. Velocities and lightcone rotation/replication information will be discarded (this should speed up both the data redistribution and the write-out).
 
-For example, to run multiple cutouts under Use Case 2 with an `fof`mass definition, and turn on all of the options above, one would execute
+`--forceWriteProps` will force the file `properties.csv` to be overwritten; the default behavior is to skip the writing of this file if it is found to already exist (only applies to use case 2).
+
+`--propsOnly` will instruct the program to return after writing the `properties.csv` file, without reading any lightcone shells or performing the cutout. This is useful if cutouts have already been built, but the properties need to be updated for any reason (only applies to use case 2). 
+
+For example, to run multiple cutouts under Use Case 2 with an `fof` mass definition, and turn on all of the options above except the final two, one would execute
 
 ```
 lc_cutout <input lightcone directory> <output directory> <min redshift> <max redshift> --haloFile <input object file> --boxLength <box length> --massDef fof --verbose --tiemit --overwrite --posOnly
