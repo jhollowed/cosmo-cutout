@@ -833,167 +833,114 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         MPI_Bcast(const_cast<char*>(file_name.data()), fname_size, MPI_CHAR, 0, MPI_COMM_WORLD);
         file_name_stream << "/" << file_name;
         
-        // objects that will be needed after read-in scope is exited below
-        vector<particle_pos> send_particles_pos;
-        vector<particle_vel> send_particles_vel;
-        vector<particle_pos> recv_particles_pos;
-        vector<particle_vel> recv_particles_vel;
-        size_t Np;
-        
-
+       
         ///////////////////////////////////////////////////////////////
         //
         //         do reading + spherical coordinate transform
         //
         ///////////////////////////////////////////////////////////////
+         
+        // instances of buffer struct at file header for read in data
+        Buffers_read r;
         
+        // setup gio
+        MPI_Barrier(MPI_COMM_WORLD); 
+        if(myrank == 0){ cout << "setting up gio..." << endl; } 
+        MPI_Barrier(MPI_COMM_WORLD); 
         
-        { // end of this scope will destroy read buffers
+        size_t Np = 0;
+        unsigned Method = GenericIO::FileIOPOSIX;
+        const char *EnvStr = getenv("GENERICIO_USE_MPIIO");
+        if(EnvStr && string(EnvStr) == "1"){
+            Method = GenericIO::FileIOMPI;  
+        }
+        
+        MPI_Barrier(MPI_COMM_WORLD); 
+        if(myrank == 0){ cout << "done setting up gio..." << endl; } 
+        MPI_Barrier(MPI_COMM_WORLD); 
 
-            // instances of buffer struct at file header for read in data
-            Buffers_read r;
-            
-            // setup gio
+        // create gio reader, open lightcone file header in new scope
+        {
             MPI_Barrier(MPI_COMM_WORLD); 
-            if(myrank == 0){ cout << "setting up gio..." << endl; } 
+            if(myrank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
             MPI_Barrier(MPI_COMM_WORLD); 
             
-            Np = 0;
-            unsigned Method = GenericIO::FileIOPOSIX;
-            const char *EnvStr = getenv("GENERICIO_USE_MPIIO");
-            if(EnvStr && string(EnvStr) == "1"){
-                Method = GenericIO::FileIOMPI;  
-            }
-            
-            MPI_Barrier(MPI_COMM_WORLD); 
-            if(myrank == 0){ cout << "done setting up gio..." << endl; } 
-            MPI_Barrier(MPI_COMM_WORLD); 
-
-            // create gio reader, open lightcone file header in new scope
-            {
-                MPI_Barrier(MPI_COMM_WORLD); 
-                if(myrank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
-                MPI_Barrier(MPI_COMM_WORLD); 
-                
-                GenericIO GIO(MPI_COMM_WORLD, file_name_stream.str(), Method);
-                GIO.openAndReadHeader(GenericIO::MismatchRedistribute);
-
-                MPI_Barrier(MPI_COMM_WORLD);
-                Np = GIO.readNumElems();
-               
-                // resize buffers   
-                r.x.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-                r.y.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-                r.z.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-                r.a.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-                r.id.resize(Np + GIO.requestedExtraSpace()/sizeof(ID_T));
-                if(!positionOnly){
-                    r.vx.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-                    r.vy.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-                    r.vz.resize(Np + GIO.requestedExtraSpace()/sizeof(POSVEL_T));
-                    r.rotation.resize(Np + GIO.requestedExtraSpace()/sizeof(int));
-                    r.replication.resize(Np + GIO.requestedExtraSpace()/sizeof(int32_t));
-                }
-
-                // do reading
-                GIO.addVariable("x", r.x, true); 
-                GIO.addVariable("y", r.y, true); 
-                GIO.addVariable("z", r.z, true); 
-                GIO.addVariable("a", r.a, true); 
-                GIO.addVariable("id", r.id, true); 
-                if(!positionOnly){
-                    GIO.addVariable("vx", r.vx, true); 
-                    GIO.addVariable("vy", r.vy, true); 
-                    GIO.addVariable("vz", r.vz, true); 
-                    GIO.addVariable("rotation", r.rotation, true); 
-                    GIO.addVariable("replication", r.replication, true);
-                }
-
-                GIO.readData(); 
-            }
-
-            // resize again to remove reader extra space
-            r.x.resize(Np);
-            r.y.resize(Np);
-            r.z.resize(Np);
-            r.a.resize(Np);
-            r.id.resize(Np);
-            if(!positionOnly){
-                r.vx.resize(Np);
-                r.vy.resize(Np);
-                r.vz.resize(Np);
-                r.rotation.resize(Np);
-                r.replication.resize(Np);
-            }
-            if(myrank == 0){ cout<<"done resizing"<<endl; }
-            
-            // calc d, theta, and phi per particle
-            r.d.resize(Np);
-            r.theta.resize(Np);
-            r.phi.resize(Np);    
-            for (int n=0; n<Np; ++n) {
-                // spherical coordinate transformation
-                r.d[n] = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
-                r.theta[n] = acos(r.z[n]/r.d[n]) * 180.0 / PI * ARCSEC;
-                
-                // prevent NaNs on y-z plane
-                if(r.x[n] == 0 && r.y[n] > 0)
-                    r.phi[n] = 90.0 * ARCSEC;
-                else if(r.x[n] == 0 && r.y[n] < 0)
-                    r.phi[n] = -90.0 * ARCSEC;
-                else
-                    r.phi[n] = atan(r.y[n]/r.x[n]) * 180.0 / PI * ARCSEC;
-            }
+            GenericIO GIO(MPI_COMM_WORLD, file_name_stream.str(), Method);
+            GIO.openAndReadHeader(GenericIO::MismatchRedistribute);
 
             MPI_Barrier(MPI_COMM_WORLD);
-            stop = MPI_Wtime();
+            Np = GIO.readNumElems();
+           
+            // resize buffers
+            resize_read_buffers(r, Np, positionOnly, extraSpace = GIO.requestedExtraSpace());
+
+            // do reading
+            GIO.addVariable("x", r.x, true); 
+            GIO.addVariable("y", r.y, true); 
+            GIO.addVariable("z", r.z, true); 
+            GIO.addVariable("a", r.a, true); 
+            GIO.addVariable("id", r.id, true); 
+            if(!positionOnly){
+                GIO.addVariable("vx", r.vx, true); 
+                GIO.addVariable("vy", r.vy, true); 
+                GIO.addVariable("vz", r.vz, true); 
+                GIO.addVariable("rotation", r.rotation, true); 
+                GIO.addVariable("replication", r.replication, true);
+            }
+
+            GIO.readData(); 
+        }
+
+        // resize again to remove reader extra space
+        resize_read_buffers(r, Np, positionOnly);
+        if(myrank == 0){ cout<<"done resizing"<<endl; }
         
-            duration = stop - start;
-            if(myrank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
-            read_times.push_back(duration);
+        // calc d, theta, and phi per particle
+        for (int n=0; n<Np; ++n) {
+            // spherical coordinate transformation
+            r.d[n] = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
+            r.theta[n] = acos(r.z[n]/r.d[n]) * 180.0 / PI * ARCSEC;
             
-            // before struct r leaves scope, pack gio data vectors into particle structs
-            // ("particle_pos" and "particle_vel" structs defined in util.h)  
-            for(int n = 0; n < Np; ++n){
-                
-                particle_pos nextParticle_pos = {r.x[n], r.y[n], r.z[n], r.d[n], r.theta[n], 
-                                                 r.phi[n], r.a[n], r.id[n], myrank};
-                send_particles_pos.push_back(nextParticle_pos);
-                
-                if(!positionOnly){
-                    particle_vel nextParticle_vel = {r.vx[n], r.vy[n], r.vz[n], 
-                                                     r.rotation[n], r.replication[n], 
-                                                     myrank};
-                    send_particles_vel.push_back(nextParticle_vel);
-                }
-            }
+            // prevent NaNs on y-z plane
+            if(r.x[n] == 0 && r.y[n] > 0)
+                r.phi[n] = 90.0 * ARCSEC;
+            else if(r.x[n] == 0 && r.y[n] < 0)
+                r.phi[n] = -90.0 * ARCSEC;
+            else
+                r.phi[n] = atan(r.y[n]/r.x[n]) * 180.0 / PI * ARCSEC;
+        }
 
-            // ************ debug ***************** 
-            if(numranks == 2){ 
-                MPI_Status staty;
-                int lock; 
-                if(myrank == 0){ lock = 1;}
-                if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
-
-                float avg_theta_rank = 0;
-                float avg_phi_rank = 0;
-                for(int qq; qq < Np; qq++){
-                    avg_theta_rank = avg_theta_rank + r.theta[qq];
-                    avg_phi_rank = avg_phi_rank + r.phi[qq];
-                }
-                avg_theta_rank = avg_theta_rank / r.theta.size();
-                avg_phi_rank = avg_phi_rank / r.theta.size();
-
-                cout << "\nparticles at rank " << myrank << ": " << Np << endl;
-                cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
-                "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
-                
-                if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
-            }
-            // ************ debug *****************
+        MPI_Barrier(MPI_COMM_WORLD);
+        stop = MPI_Wtime();
+    
+        duration = stop - start;
+        if(myrank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
+        read_times.push_back(duration);
         
-        } // end of read-in scope
-        
+        // ************ debug ***************** 
+        if(numranks == 2){ 
+            MPI_Status staty;
+            int lock; 
+            if(myrank == 0){ lock = 1;}
+            if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
+
+            float avg_theta_rank = 0;
+            float avg_phi_rank = 0;
+            for(int qq; qq < Np; qq++){
+                avg_theta_rank = avg_theta_rank + r.theta[qq];
+                avg_phi_rank = avg_phi_rank + r.phi[qq];
+            }
+            avg_theta_rank = avg_theta_rank / r.theta.size();
+            avg_phi_rank = avg_phi_rank / r.theta.size();
+
+            cout << "\nparticles at rank " << myrank << ": " << Np << endl;
+            cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
+            "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
+            
+            if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
+        }
+        // ************ debug *****************  
+
 
         ///////////////////////////////////////////////////////////////
         //
@@ -1014,6 +961,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // time redistribution 
         MPI_Barrier(MPI_COMM_WORLD);
         start = MPI_Wtime();
+        
+        // instances of buffer struct at file header for received data
+        Buffers_read recv_particles;
          
         // find number of empty ranks
         vector<size_t> Np_read_per_rank(numranks); 
@@ -1053,24 +1003,40 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             redist_send_offset[ri] = redist_send_offset[ri-1] + redist_send_count[ri-1];
             redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
         }
-
-        recv_particles_pos.resize(redist_recv_offset.back() + redist_recv_count.back());
-        if(!positionOnly)
-            recv_particles_vel.resize(redist_recv_offset.back() + redist_recv_count.back());
+        
+        // resize reciving buffers
+        int tot_num_recv = redist_recv_offset.back() + redist_recv_count.back();
+        resize_read_buffers(recv_particles, tot_num_recv, positonOnly);
  
         // OK, all read, now to redsitribute the particles evely-ish across ranks
-        MPI_Alltoallv(&send_particles_pos[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi_pos,
-                      &recv_particles_pos[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi_pos, 
-                      MPI_COMM_WORLD);
-        if(!positionOnly)
-            MPI_Alltoallv(&send_particles_vel[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi_vel,
-                          &recv_particles_vel[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi_vel, 
+        MPI_Datatype type_pos[8] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
+                                    MPI_FLOAT, MPI_FLOAT, MPI_INT64_T};
+        POSVEL_T *cols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], 
+                                     &r.a[0], &r.id[0]};
+        POSVEL_T *cols_recv_pos[] = {&recv_particles.x[0], &recv_particles.y[0], 
+                                     &recv_particles.z[0], &recv_particles.d[0], 
+                                     &recv_particles.theta[0], &recv_particles.phi[0], 
+                                     &recv_particles.a[0]};
+        
+        MPI_Datatype type[5] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
+                                MPI_INT, MPI_INT32_T};
+        POSVEL_T *float_cols_send_vel[] = {&r.vx[0], &r.vy[0], &r.vz[0], &r.rotation[0], &r.replication[0]};
+        POSVEL_T *float_cols_recv_particlesecv_vel[] = {&recv_particles.vx[0], &recv_particles.vy[0], 
+                                                        &recv_particles.vz[0]};
+        for(int coln; coln < 8){
+            MPI_Alltoallv(float_cols_send_pos[coln], &redist_send_count[0], &redist_send_offset[0], type_pos[coln],
+                          float_cols_recv_pos[coln], &redist_recv_count[0], &redist_recv_offset[0], type_pos[coln], 
                           MPI_COMM_WORLD);
+        if(!positionOnly)
+            for(int coln; coln < 3){
+                MPI_Alltoallv(float_cols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], 
+                              type_vel[coln],
+                              float_cols_recv_vel[coln], &redist_recv_count[0], &redist_recv_offset[0], 
+                              type_vel[coln], MPI_COMM_WORLD);
         
         // particles now redistributed; find new Np to verify all particles accounted for
-        send_particles_pos.clear();
-        send_particles_vel.clear();
-        Np = redist_recv_offset.back() + redist_recv_count.back(); 
+        r.clear();
+        Np = recv_particles.id.size(); 
          
         vector<size_t> Np_recv_per_rank(numranks); 
         MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_recv_per_rank[0], 1, MPI_INT64_T, 
@@ -1103,11 +1069,11 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             float avg_theta_rank = 0;
             float avg_phi_rank = 0;
             for(int qq; qq < Np; qq++){
-                avg_theta_rank = avg_theta_rank + recv_particles_pos[qq].theta;
-                avg_phi_rank = avg_phi_rank + recv_particles_pos[qq].phi;
+                avg_theta_rank = avg_theta_rank + recv_particles.theta[qq];
+                avg_phi_rank = avg_phi_rank + recv_particles.phi[qq];
             }
-            avg_theta_rank = avg_theta_rank / recv_particles_pos.size();
-            avg_phi_rank = avg_phi_rank / recv_particles_pos.size();
+            avg_theta_rank = avg_theta_rank / recv_particles.id.size();
+            avg_phi_rank = avg_phi_rank / recv_particles.id.size();
 
             cout << "\nparticles at rank " << myrank << " after redist: " << Np << endl;
             cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
@@ -1139,10 +1105,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         int idx=0;
         std::iota(theta_argSort.begin(), theta_argSort.end(), idx++);
         stable_sort(theta_argSort.begin(), theta_argSort.end(), 
-             [&](int n, int m){return recv_particles_pos[n].theta < recv_particles_pos[m].theta;} );
+             [&](int n, int m){return recv_particles_pos.theta[n] < recv_particles_pos.theta[m];} );
         
         // sort recv_particles_pos such that theta is in ascending order
-        stable_sort(recv_particles_pos.begin(), recv_particles_pos.end(), comp_by_theta);
+        sort_read_buffers(recv_particles, theta_argSort, positonOnly);
         
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime(); 
@@ -1255,17 +1221,17 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // to limit our following brute force search to an annulus around the sky 
             // parallel to the equator...
             particle_pos left_dummy;
-            left_dummy.theta = theta_cut_rough[haloIdx][0];
+            left_dummy = theta_cut_rough[haloIdx][0];
             particle_pos right_dummy;
             right_dummy.theta = theta_cut_rough[haloIdx][1];
             
-            auto leftCut_iter = std::lower_bound(recv_particles_pos.begin(), recv_particles_pos.end(), 
-                                                 left_dummy, comp_by_theta);
-            auto rightCut_iter = std::upper_bound(recv_particles_pos.begin(), recv_particles_pos.end(), 
-                                                  right_dummy, comp_by_theta);
+            auto leftCut_iter = std::lower_bound(recv_particles.theta.begin(), recv_particles.theta.end(), 
+                                                 theta_rough_cut[haloIdx][0]);
+            auto rightCut_iter = std::lower_bound(recv_particles.theta.begin(), recv_particles.theta.end(), 
+                                                  theta_rough_cut[haloIdx][1]);
             
-            int minN = std::distance(recv_particles_pos.begin(), leftCut_iter);
-            int maxN = std::distance(recv_particles_pos.begin(), rightCut_iter);
+            int minN = std::distance(recv_particles.theta.begin(), leftCut_iter);
+            int maxN = std::distance(recv_particles.theta.begin(), rightCut_iter);
                             
             auto posIdx_iter = std::find(theta_argSort.begin(), theta_argSort.end(), 0);
             int posIdx = std::distance(theta_argSort.begin(), posIdx_iter);
@@ -1273,9 +1239,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // Now, brute force search on phi to finish rough cutout
             for (int n=minN; n<maxN; ++n) {
                 
-                float d = recv_particles_pos[n].d; 
-                float theta = recv_particles_pos[n].theta;
-                float phi = recv_particles_pos[n].phi;
+                float d = recv_particles.d[n]; 
+                float theta = recv_particles.theta[n];
+                float phi = recv_particles.phi[n];
 
                 if (phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
                  
@@ -1286,7 +1252,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // do coordinate rotation center halo at (r, 90, 0)
                     // B and k are the angle and axis of rotation, respectively,
                     // calculated near the beginning of this function
-                    float tmp_v[] = {recv_particles_pos[n].x, recv_particles_pos[n].y, recv_particles_pos[n].z};
+                    float tmp_v[] = {recv_particles.x[n], recv_particles.y[n], recv_particles.z[n]};
                     vector<float> v(tmp_v, tmp_v+3);
                     vector<float> v_rot;
                     v_rot = matVecMul(R[haloIdx], v);
@@ -1310,29 +1276,24 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
 
                         // get redshift from scale factor
-                        float zz = aToZ(recv_particles_pos[n].a);
+                        float zz = aToZ(recv_particles.a[n]);
                         
                         // spherical corrdinate transform of rotated positions
                         w.theta.push_back(v_theta);
                         w.phi.push_back(v_phi);
 
                         // other columns
-                        w.x.push_back(recv_particles_pos[n].x);
-                        w.y.push_back(recv_particles_pos[n].y);
-                        w.z.push_back(recv_particles_pos[n].z);
+                        w.x.push_back(recv_particles.x[n]);
+                        w.y.push_back(recv_particles.y[n]);
+                        w.z.push_back(recv_particles.z[n]);
                         w.redshift.push_back(zz);
-                        w.id.push_back(recv_particles_pos[n].id);
-                        if(!positionOnly){
-                            
-                            // get index of matching entry in recv_particles_vel
-                            auto velIdx_iter = std::find(theta_argSort.begin(), theta_argSort.end(), n);
-                            int velIdx = std::distance(theta_argSort.begin(), velIdx_iter);
-                            
-                            w.vx.push_back(recv_particles_vel[theta_argSort[velIdx]].vx);
-                            w.vy.push_back(recv_particles_vel[theta_argSort[velIdx]].vy);
-                            w.vz.push_back(recv_particles_vel[theta_argSort[velIdx]].vz);
-                            w.rotation.push_back(recv_particles_vel[theta_argSort[velIdx]].rotation);
-                            w.replication.push_back(recv_particles_vel[theta_argSort[velIdx]].replication);
+                        w.id.push_back(recv_particles.id[n]);
+                        if(!positionOnly){ 
+                            w.vx.push_back(recv_particles.vx[n]);
+                            w.vy.push_back(recv_particles.vy[n]);
+                            w.vz.push_back(recv_particles.vz[n]);
+                            w.rotation.push_back(recv_particles.rotation[n]);
+                            w.replication.push_back(recv_particles.replication[n]);
                         }
                         cutout_size++;
                         thisRank_end = clock();

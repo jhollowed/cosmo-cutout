@@ -109,6 +109,36 @@ MPI_Datatype createParticles_pos();
 MPI_Datatype createParticles_vel();
 
 template<typename T>
+void reorder_vec(T &vec, const vector<int> &map) 
+{ 
+    n = vec.size();
+    
+    // Fix all elements one by one 
+    for (int i=0; i<n; i++) 
+    { 
+        // While map[i] and vec[i] are not fixed 
+        while (map[i] != i) 
+        { 
+            // Store values of the target (or correct)  
+            // position before placing vec[i] there 
+            int  oldTargetI  = map[map[i]]; 
+            T oldTargetE  = vec[map[i]]; 
+  
+            // Place vec[i] at its target (or correct) 
+            // position. Also copy corrected map for 
+            // new position 
+            vec[map[i]] = vec[i]; 
+            map[map[i]] = map[i]; 
+  
+            // Copy old target values to vec[i] and 
+            // map[i] 
+            map[i] = oldTargetI; 
+            vec[i]   = oldTargetE; 
+        } 
+    } 
+} 
+
+template<typename T>
 bool comp_rank(const T &a, const T &b){
     // compare the myrank fields of two structs. Type T should be either a
     // particle_pos or particle_vel
