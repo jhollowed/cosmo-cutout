@@ -941,6 +941,31 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         duration = stop - start;
         if(myrank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
         read_times.push_back(duration);
+
+
+        // ************ debug ***************** 
+        if(numranks == 2){ 
+            MPI_Status staty;
+            int lock; 
+            if(myrank == 0){ lock = 1;}
+            if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
+
+            float avg_theta_rank = 0;
+            float avg_phi_rank = 0;
+            for(int qq; qq < Np; qq++){
+                avg_theta_rank = avg_theta_rank + r.theta[qq];
+                avg_phi_rank = avg_phi_rank + r.phi[qq];
+            }
+            avg_theta_rank = avg_theta_rank / r.theta.size();
+            avg_phi_rank = avg_phi_rank / r.theta.size();
+
+            cout << "\nparticles at rank " << myrank << ": " << Np << endl;
+            cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
+            "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
+            
+            if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
+        }
+        // ************ debug *****************
         
 
         ///////////////////////////////////////////////////////////////
@@ -1021,7 +1046,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                                                  even_redistribute[n]};
                 send_particles_vel.push_back(nextParticle_vel);
             }
-        }
+        } 
 
         recv_particles_pos.resize(redist_recv_offset.back() + redist_recv_count.back());
         if(!positionOnly)
@@ -1072,7 +1097,34 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         if(myrank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
         redist_times.push_back(duration);
         
+        // ************ debug *****************
         
+        if(numranks == 2){
+            MPI_Status staty;
+            int lock; 
+            if(myrank == 0){ lock = 1;}
+            if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
+
+            float avg_theta_rank = 0;
+            float avg_phi_rank = 0;
+            for(int qq; qq < Np; qq++){
+                avg_theta_rank = avg_theta_rank + recv_particles_pos[qq].theta;
+                avg_phi_rank = avg_phi_rank + recv_particles_pos[qq].phi;
+            }
+            avg_theta_rank = avg_theta_rank / recv_particles_pos.size();
+            avg_phi_rank = avg_phi_rank / recv_particles_pos.size();
+
+            cout << "\nparticles at rank " << myrank << " after redist: " << Np << endl;
+            cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
+            "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
+            
+            if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
+        }
+        // ************ debug *****************
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
+
         ///////////////////////////////////////////////////////////////
         //
         //           Sort particles by theta for binary search
@@ -1203,9 +1255,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             vector<float> AM(2);
             vector<float> BM(2);
         
-            // all of this ranks recieved particles were sorted, after read-in, by their 
+            // all of this rank's recieved particles were sorted, after read-in, by their 
             // "theta" attribute. So, we can do a binary search for our rough theta bounds
-            // to limit our search to an annulus around the sky parallel to the equator...
+            // to limit our following brute force search to an annulus around the sky 
+            // parallel to the equator...
             particle_pos left_dummy;
             left_dummy.theta = theta_cut_rough[haloIdx][0];
             particle_pos right_dummy;
@@ -1221,8 +1274,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             
             auto posIdx_iter = std::find(theta_argSort.begin(), theta_argSort.end(), 0);
             int posIdx = std::distance(theta_argSort.begin(), posIdx_iter);
-            
-            // Now, brute force search on phi to finish rough cut out
+
+            // Now, brute force search on phi to finish rough cutout
             for (int n=minN; n<maxN; ++n) {
                 
                 float d = recv_particles_pos[n].d; 
@@ -1232,7 +1285,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 if (phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
                  
                     // of the particles surviving the rough cut, let's do a proper rotation 
-                    // on them to find the true cutout memership, and return cluster-centric 
+                    // on them to find the true cutout membership, and return cluster-centric 
                     // angular coordinates
                     
                     // do coordinate rotation center halo at (r, 90, 0)
@@ -1256,7 +1309,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         v_phi = -90.0 * ARCSEC;
                     else
                         v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
-                 
+                         
                     // do final cut
                     if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
                         v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
@@ -1307,6 +1360,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     }
                 }
             }
+
             MPI_Barrier(MPI_COMM_WORLD);
             
             stop = MPI_Wtime();

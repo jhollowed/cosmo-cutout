@@ -61,8 +61,8 @@ struct Buffers_write {
     vector<ID_T> id;
     vector<int> rotation;
     vector<int32_t> replication;
-    vector<float> theta;
-    vector<float> phi;
+    vector<POSVEL_T> theta;
+    vector<POSVEL_T> phi;
     
     // Buffers to fill with MPI file writing offset values
     vector<int> np_count; // length of output data vecotrs for each rank
@@ -77,8 +77,8 @@ struct particle_pos {
     POSVEL_T y;
     POSVEL_T z;
     POSVEL_T d;
-    float theta;
-    float phi;
+    POSVEL_T theta;
+    POSVEL_T phi;
     POSVEL_T a;
     ID_T id;
     int myrank;
