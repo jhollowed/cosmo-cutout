@@ -71,7 +71,7 @@ MPI_Datatype createParticles_vel(){
 
 
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
-    // Constructs a vector divided into parPerRank chunks sharing a common identifier
+    // Constructs a vector divided into numranks chunks sharing a common identifier
     //
     // Params:
     // :param Np: desired length of the constructed vector
@@ -79,8 +79,9 @@ void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
     // :param numranks: number of unique populations resultant in idxRemap
     // :return: None
 
+    float np_per_rank = float(Np) / numranks;
     for(int j = 0; j < Np; ++j){
-        idxRemap.push_back(j % numranks);
+        idxRemap.push_back(int(j / np_per_rank));
     }
 }
 

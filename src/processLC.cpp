@@ -1004,7 +1004,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         // now, we have likely ended up in the situation where most of the data read
         // resides in only a small subset of the ranks in this communicator. This is becuase
         // (I think) only a small fraction of the number of ranks that generated the lightcone 
-        // at any particular step intersected that lightcone shell. Tthat information is encoded 
+        // at any particular step intersected that lightcone shell. That information is encoded 
         // in the lightcone output in the fact that all ranks which found no particles interesecting
         // the shell created an empty block in the resultant GIO files.
         // That's no good, because for this cutout code, we don't want some few nodes to be doing 
@@ -1054,30 +1054,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
         }
 
-        // update destination rank in particle structs acccording to even_redistribute, 
-        // to be distributed by alltoallv
-        for(int n = 0; n < Np; ++n){
-            send_particles_pos[n].myrank = even_redistribute[n];
-            if(!positionOnly){
-                send_particles_vel[n].myrank = even_redistribute[n];
-            }
-        }
-
         recv_particles_pos.resize(redist_recv_offset.back() + redist_recv_count.back());
         if(!positionOnly)
             recv_particles_vel.resize(redist_recv_offset.back() + redist_recv_count.back());
-
-        // now we need to sort our particle data by it's destination rank. As an example;
-        // if Np = 12 and numranks = 4, then the above call to comp_rank_scatter will result in
-        // even_redistribute = {0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3}, 
-        // which indicates the receiving rank of each particle at position i. In the most recent
-        // loop above, we filled the particle struct "myrank" field with the contents of 
-        // even_redistribute. So, we can sort the particle objects by that field, in order for our
-        // send+offset pair to give the expected result 
-        sort(send_particles_pos.begin(), send_particles_pos.end(), comp_rank<particle_pos>);
-        if(!positionOnly)
-            sort(send_particles_vel.begin(), send_particles_vel.end(), comp_rank<particle_vel>);
-
+ 
         // OK, all read, now to redsitribute the particles evely-ish across ranks
         MPI_Alltoallv(&send_particles_pos[0], &redist_send_count[0], &redist_send_offset[0], particles_mpi_pos,
                       &recv_particles_pos[0], &redist_recv_count[0], &redist_recv_offset[0], particles_mpi_pos, 
