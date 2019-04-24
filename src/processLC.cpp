@@ -1028,7 +1028,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                           &recv_particles.id[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_INT64_T, 
                           MPI_COMM_WORLD);
 
-            if(!positionOnly)
+            if(!positionOnly){
                 for(int coln; coln < 3; coln++){
                     MPI_Alltoallv(fcols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
                                   fcols_recv_vel[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
@@ -1040,6 +1040,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 MPI_Alltoallv(&r.rotation[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT,
                               &recv_particles.rotation[0], &redist_recv_count[0], &redist_recv_offset[0], 
                               MPI_INT, MPI_COMM_WORLD);
+            }
             
             // particles now redistributed; find new Np to verify all particles accounted for
             Np = recv_particles.id.size(); 
