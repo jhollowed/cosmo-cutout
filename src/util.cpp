@@ -73,7 +73,7 @@ MPI_Datatype createParticles_vel(){
 //======================================================================================
 
 
-resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace=0){
+void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace){
 
         r.x.resize(size + extraSpace/sizeof(POSVEL_T));
         r.y.resize(size + extraSpace/sizeof(POSVEL_T));
@@ -96,7 +96,8 @@ resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace
 //======================================================================================
 
 
-sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly){
+void sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly){
+
    reorder_vec(r.x, map);
    reorder_vec(r.y, map);
    reorder_vec(r.z, map);

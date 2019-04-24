@@ -111,28 +111,29 @@ MPI_Datatype createParticles_vel();
 template<typename T>
 void reorder_vec(T &vec, const vector<int> &map) 
 { 
-    n = vec.size();
+    int n = vec.size();
+    vector<int> mod_map = map;
     
     // Fix all elements one by one 
     for (int i=0; i<n; i++) 
     { 
-        // While map[i] and vec[i] are not fixed 
-        while (map[i] != i) 
+        // While mod_map[i] and vec[i] are not fixed 
+        while (mod_map[i] != i) 
         { 
             // Store values of the target (or correct)  
             // position before placing vec[i] there 
-            int  oldTargetI  = map[map[i]]; 
-            T oldTargetE  = vec[map[i]]; 
+            int  oldTargetI  = mod_map[mod_map[i]]; 
+            auto oldTargetE  = vec[mod_map[i]]; 
   
             // Place vec[i] at its target (or correct) 
-            // position. Also copy corrected map for 
+            // position. Also copy corrected mod_map for 
             // new position 
-            vec[map[i]] = vec[i]; 
-            map[map[i]] = map[i]; 
+            vec[mod_map[i]] = vec[i]; 
+            mod_map[mod_map[i]] = mod_map[i]; 
   
             // Copy old target values to vec[i] and 
-            // map[i] 
-            map[i] = oldTargetI; 
+            // mod_map[i] 
+            mod_map[i] = oldTargetI; 
             vec[i]   = oldTargetE; 
         } 
     } 
@@ -152,6 +153,10 @@ bool comp_rank(const T &a, const T &b){
 
     return a.myrank < b.myrank;
 }
+
+void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace=0);
+
+void sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly);
 
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
 

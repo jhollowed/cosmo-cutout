@@ -839,251 +839,259 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         //         do reading + spherical coordinate transform
         //
         ///////////////////////////////////////////////////////////////
-         
-        // instances of buffer struct at file header for read in data
-        Buffers_read r;
-        
-        // setup gio
-        MPI_Barrier(MPI_COMM_WORLD); 
-        if(myrank == 0){ cout << "setting up gio..." << endl; } 
-        MPI_Barrier(MPI_COMM_WORLD); 
-        
+       
+        // instances of buffer struct at file header for particle data after redisribution
+        Buffers_read recv_particles;
         size_t Np = 0;
-        unsigned Method = GenericIO::FileIOPOSIX;
-        const char *EnvStr = getenv("GENERICIO_USE_MPIIO");
-        if(EnvStr && string(EnvStr) == "1"){
-            Method = GenericIO::FileIOMPI;  
-        }
         
-        MPI_Barrier(MPI_COMM_WORLD); 
-        if(myrank == 0){ cout << "done setting up gio..." << endl; } 
-        MPI_Barrier(MPI_COMM_WORLD); 
+        { // start read-in scope; read buffers r destroyed after here
 
-        // create gio reader, open lightcone file header in new scope
-        {
+            // instances of buffer struct at file header for read in data
+            Buffers_read r;
+            
+            // setup gio
             MPI_Barrier(MPI_COMM_WORLD); 
-            if(myrank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
+            if(myrank == 0){ cout << "setting up gio..." << endl; } 
             MPI_Barrier(MPI_COMM_WORLD); 
             
-            GenericIO GIO(MPI_COMM_WORLD, file_name_stream.str(), Method);
-            GIO.openAndReadHeader(GenericIO::MismatchRedistribute);
+            unsigned Method = GenericIO::FileIOPOSIX;
+            const char *EnvStr = getenv("GENERICIO_USE_MPIIO");
+            if(EnvStr && string(EnvStr) == "1"){
+                Method = GenericIO::FileIOMPI;  
+            }
+            
+            MPI_Barrier(MPI_COMM_WORLD); 
+            if(myrank == 0){ cout << "done setting up gio..." << endl; } 
+            MPI_Barrier(MPI_COMM_WORLD); 
+
+            // create gio reader, open lightcone file header in new scope
+            {
+                MPI_Barrier(MPI_COMM_WORLD); 
+                if(myrank == 0){ cout << "Opening file: " << file_name_stream.str() << endl; }
+                MPI_Barrier(MPI_COMM_WORLD); 
+                
+                GenericIO GIO(MPI_COMM_WORLD, file_name_stream.str(), Method);
+                GIO.openAndReadHeader(GenericIO::MismatchRedistribute);
+
+                MPI_Barrier(MPI_COMM_WORLD);
+                Np = GIO.readNumElems();
+               
+                // resize buffers
+                resize_read_buffers(r, Np, positionOnly, GIO.requestedExtraSpace());
+
+                // do reading
+                GIO.addVariable("x", r.x, true); 
+                GIO.addVariable("y", r.y, true); 
+                GIO.addVariable("z", r.z, true); 
+                GIO.addVariable("a", r.a, true); 
+                GIO.addVariable("id", r.id, true); 
+                if(!positionOnly){
+                    GIO.addVariable("vx", r.vx, true); 
+                    GIO.addVariable("vy", r.vy, true); 
+                    GIO.addVariable("vz", r.vz, true); 
+                    GIO.addVariable("rotation", r.rotation, true); 
+                    GIO.addVariable("replication", r.replication, true);
+                }
+
+                GIO.readData(); 
+            }
+
+            // resize again to remove reader extra space
+            resize_read_buffers(r, Np, positionOnly);
+            if(myrank == 0){ cout<<"done resizing"<<endl; }
+            
+            // calc d, theta, and phi per particle
+            for (int n=0; n<Np; ++n) {
+                // spherical coordinate transformation
+                r.d[n] = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
+                r.theta[n] = acos(r.z[n]/r.d[n]) * 180.0 / PI * ARCSEC;
+                
+                // prevent NaNs on y-z plane
+                if(r.x[n] == 0 && r.y[n] > 0)
+                    r.phi[n] = 90.0 * ARCSEC;
+                else if(r.x[n] == 0 && r.y[n] < 0)
+                    r.phi[n] = -90.0 * ARCSEC;
+                else
+                    r.phi[n] = atan(r.y[n]/r.x[n]) * 180.0 / PI * ARCSEC;
+            }
 
             MPI_Barrier(MPI_COMM_WORLD);
-            Np = GIO.readNumElems();
-           
-            // resize buffers
-            resize_read_buffers(r, Np, positionOnly, extraSpace = GIO.requestedExtraSpace());
-
-            // do reading
-            GIO.addVariable("x", r.x, true); 
-            GIO.addVariable("y", r.y, true); 
-            GIO.addVariable("z", r.z, true); 
-            GIO.addVariable("a", r.a, true); 
-            GIO.addVariable("id", r.id, true); 
-            if(!positionOnly){
-                GIO.addVariable("vx", r.vx, true); 
-                GIO.addVariable("vy", r.vy, true); 
-                GIO.addVariable("vz", r.vz, true); 
-                GIO.addVariable("rotation", r.rotation, true); 
-                GIO.addVariable("replication", r.replication, true);
-            }
-
-            GIO.readData(); 
-        }
-
-        // resize again to remove reader extra space
-        resize_read_buffers(r, Np, positionOnly);
-        if(myrank == 0){ cout<<"done resizing"<<endl; }
+            stop = MPI_Wtime();
         
-        // calc d, theta, and phi per particle
-        for (int n=0; n<Np; ++n) {
-            // spherical coordinate transformation
-            r.d[n] = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
-            r.theta[n] = acos(r.z[n]/r.d[n]) * 180.0 / PI * ARCSEC;
+            duration = stop - start;
+            if(myrank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
+            read_times.push_back(duration);
             
-            // prevent NaNs on y-z plane
-            if(r.x[n] == 0 && r.y[n] > 0)
-                r.phi[n] = 90.0 * ARCSEC;
-            else if(r.x[n] == 0 && r.y[n] < 0)
-                r.phi[n] = -90.0 * ARCSEC;
-            else
-                r.phi[n] = atan(r.y[n]/r.x[n]) * 180.0 / PI * ARCSEC;
-        }
+            // ************ debug ***************** 
+            if(numranks == 2){ 
+                MPI_Status staty;
+                int lock; 
+                if(myrank == 0){ lock = 1;}
+                if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        stop = MPI_Wtime();
-    
-        duration = stop - start;
-        if(myrank == 0 and timeit == true){ cout << "Read time: " << duration << " s" << endl; }
-        read_times.push_back(duration);
-        
-        // ************ debug ***************** 
-        if(numranks == 2){ 
-            MPI_Status staty;
-            int lock; 
-            if(myrank == 0){ lock = 1;}
-            if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
+                float avg_theta_rank = 0;
+                float avg_phi_rank = 0;
+                for(int qq; qq < Np; qq++){
+                    avg_theta_rank = avg_theta_rank + r.theta[qq];
+                    avg_phi_rank = avg_phi_rank + r.phi[qq];
+                }
+                avg_theta_rank = avg_theta_rank / r.theta.size();
+                avg_phi_rank = avg_phi_rank / r.theta.size();
 
-            float avg_theta_rank = 0;
-            float avg_phi_rank = 0;
-            for(int qq; qq < Np; qq++){
-                avg_theta_rank = avg_theta_rank + r.theta[qq];
-                avg_phi_rank = avg_phi_rank + r.phi[qq];
+                cout << "\nparticles at rank " << myrank << ": " << Np << endl;
+                cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
+                "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
+                
+                if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
             }
-            avg_theta_rank = avg_theta_rank / r.theta.size();
-            avg_phi_rank = avg_phi_rank / r.theta.size();
+            // ************ debug *****************  
 
-            cout << "\nparticles at rank " << myrank << ": " << Np << endl;
-            cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
-            "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
+
+            ///////////////////////////////////////////////////////////////
+            //
+            //           evenly distribute particles to all ranks
+            //
+            ///////////////////////////////////////////////////////////////
             
-            if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
-        }
-        // ************ debug *****************  
-
-
-        ///////////////////////////////////////////////////////////////
-        //
-        //           evenly distribute particles to all ranks
-        //
-        ///////////////////////////////////////////////////////////////
-        
-        // now, we have likely ended up in the situation where most of the data read
-        // resides in only a small subset of the ranks in this communicator. This is becuase
-        // (I think) only a small fraction of the number of ranks that generated the lightcone 
-        // at any particular step intersected that lightcone shell. That information is encoded 
-        // in the lightcone output in the fact that all ranks which found no particles interesecting
-        // the shell created an empty block in the resultant GIO files.
-        // That's no good, because for this cutout code, we don't want some few nodes to be doing 
-        // lots of computation while most others do none, so let's scatter the input data evenly 
-        // across all ranks
-     
-        // time redistribution 
-        MPI_Barrier(MPI_COMM_WORLD);
-        start = MPI_Wtime();
-        
-        // instances of buffer struct at file header for received data
-        Buffers_read recv_particles;
+            // now, we have likely ended up in the situation where most of the data read
+            // resides in only a small subset of the ranks in this communicator. This is becuase
+            // (I think) only a small fraction of the number of ranks that generated the lightcone 
+            // at any particular step intersected that lightcone shell. That information is encoded 
+            // in the lightcone output in the fact that all ranks which found no particles interesecting
+            // the shell created an empty block in the resultant GIO files.
+            // That's no good, because for this cutout code, we don't want some few nodes to be doing 
+            // lots of computation while most others do none, so let's scatter the input data evenly 
+            // across all ranks
          
-        // find number of empty ranks
-        vector<size_t> Np_read_per_rank(numranks); 
-        MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_read_per_rank[0], 1, MPI_INT64_T, 
-                      MPI_COMM_WORLD);
-        int num_readNone = count(&Np_read_per_rank[0], &Np_read_per_rank[numranks], 0); 
-        
-        // and number of total particles per rank with data
-        size_t totalNp = 0;
-        for(int ri = 0; ri < numranks; ++ri){
-            totalNp += Np_read_per_rank[ri];
-        }
-
-        if(myrank == 0){
-            cout << "Total number of particles is " << totalNp << endl;
-            cout << "Redistributing particles to all from " << numranks - num_readNone << 
-                    " of " << numranks << " ranks" << endl;
-        }   
-         
-        vector<int> even_redistribute;
-        vector<int> redist_send_count(numranks);
-        vector<int> redist_recv_count(numranks);
-        vector<int> redist_send_offset(numranks);
-        vector<int> redist_recv_offset(numranks);
-        
-        // compute number of particles to send to each other rank
-        comp_rank_scatter(Np, even_redistribute, numranks);
-        for(int ri = 0; ri < numranks; ++ri){
-            redist_send_count[ri] = count(&even_redistribute[0], &even_redistribute[Np], ri);
-        }
-        
-        // get number of particles to recieve from every other rank
-        MPI_Alltoall(&redist_send_count[0], 1, MPI_INT, &redist_recv_count[0], 1, MPI_INT, MPI_COMM_WORLD);
-
-        // compute sending+recieving offsets to/from each other rank
-        for(int ri=1; ri < numranks; ++ri){
-            redist_send_offset[ri] = redist_send_offset[ri-1] + redist_send_count[ri-1];
-            redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
-        }
-        
-        // resize reciving buffers
-        int tot_num_recv = redist_recv_offset.back() + redist_recv_count.back();
-        resize_read_buffers(recv_particles, tot_num_recv, positonOnly);
- 
-        // OK, all read, now to redsitribute the particles evely-ish across ranks
-        MPI_Datatype type_pos[8] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
-                                    MPI_FLOAT, MPI_FLOAT, MPI_INT64_T};
-        POSVEL_T *cols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], 
-                                     &r.a[0], &r.id[0]};
-        POSVEL_T *cols_recv_pos[] = {&recv_particles.x[0], &recv_particles.y[0], 
-                                     &recv_particles.z[0], &recv_particles.d[0], 
-                                     &recv_particles.theta[0], &recv_particles.phi[0], 
-                                     &recv_particles.a[0]};
-        
-        MPI_Datatype type[5] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
-                                MPI_INT, MPI_INT32_T};
-        POSVEL_T *float_cols_send_vel[] = {&r.vx[0], &r.vy[0], &r.vz[0], &r.rotation[0], &r.replication[0]};
-        POSVEL_T *float_cols_recv_particlesecv_vel[] = {&recv_particles.vx[0], &recv_particles.vy[0], 
-                                                        &recv_particles.vz[0]};
-        for(int coln; coln < 8){
-            MPI_Alltoallv(float_cols_send_pos[coln], &redist_send_count[0], &redist_send_offset[0], type_pos[coln],
-                          float_cols_recv_pos[coln], &redist_recv_count[0], &redist_recv_offset[0], type_pos[coln], 
+            // time redistribution 
+            MPI_Barrier(MPI_COMM_WORLD);
+            start = MPI_Wtime();
+             
+            // find number of empty ranks
+            vector<size_t> Np_read_per_rank(numranks); 
+            MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_read_per_rank[0], 1, MPI_INT64_T, 
                           MPI_COMM_WORLD);
-        if(!positionOnly)
-            for(int coln; coln < 3){
-                MPI_Alltoallv(float_cols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], 
-                              type_vel[coln],
-                              float_cols_recv_vel[coln], &redist_recv_count[0], &redist_recv_offset[0], 
-                              type_vel[coln], MPI_COMM_WORLD);
-        
-        // particles now redistributed; find new Np to verify all particles accounted for
-        r.clear();
-        Np = recv_particles.id.size(); 
-         
-        vector<size_t> Np_recv_per_rank(numranks); 
-        MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_recv_per_rank[0], 1, MPI_INT64_T, 
-                      MPI_COMM_WORLD);
-
-        totalNp = 0;
-        for(int ri = 0; ri < numranks; ++ri){
-            totalNp += Np_recv_per_rank[ri];
-        }
-        size_t avg_Np_recv_per_rank = (size_t)(totalNp/numranks);
-        if(myrank == 0){
-            cout << "Total number of particles after redistribution is " << totalNp << " (about " << 
-                    avg_Np_recv_per_rank << " particles per rank)" << endl;
-        }   
-
-        MPI_Barrier(MPI_COMM_WORLD);
-        stop = MPI_Wtime(); 
-        duration = stop - start;
-        if(myrank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
-        redist_times.push_back(duration);
-        
-        // ************ debug *****************
-        
-        if(numranks == 2){
-            MPI_Status staty;
-            int lock; 
-            if(myrank == 0){ lock = 1;}
-            if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
-
-            float avg_theta_rank = 0;
-            float avg_phi_rank = 0;
-            for(int qq; qq < Np; qq++){
-                avg_theta_rank = avg_theta_rank + recv_particles.theta[qq];
-                avg_phi_rank = avg_phi_rank + recv_particles.phi[qq];
-            }
-            avg_theta_rank = avg_theta_rank / recv_particles.id.size();
-            avg_phi_rank = avg_phi_rank / recv_particles.id.size();
-
-            cout << "\nparticles at rank " << myrank << " after redist: " << Np << endl;
-            cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
-            "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
+            int num_readNone = count(&Np_read_per_rank[0], &Np_read_per_rank[numranks], 0); 
             
-            if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
-        }
-        // ************ debug *****************
+            // and number of total particles per rank with data
+            size_t totalNp = 0;
+            for(int ri = 0; ri < numranks; ++ri){
+                totalNp += Np_read_per_rank[ri];
+            }
 
-        MPI_Barrier(MPI_COMM_WORLD);
+            if(myrank == 0){
+                cout << "Total number of particles is " << totalNp << endl;
+                cout << "Redistributing particles to all from " << numranks - num_readNone << 
+                        " of " << numranks << " ranks" << endl;
+            }   
+             
+            vector<int> even_redistribute;
+            vector<int> redist_send_count(numranks);
+            vector<int> redist_recv_count(numranks);
+            vector<int> redist_send_offset(numranks);
+            vector<int> redist_recv_offset(numranks);
+            
+            // compute number of particles to send to each other rank
+            comp_rank_scatter(Np, even_redistribute, numranks);
+            for(int ri = 0; ri < numranks; ++ri){
+                redist_send_count[ri] = count(&even_redistribute[0], &even_redistribute[Np], ri);
+            }
+            
+            // get number of particles to recieve from every other rank
+            MPI_Alltoall(&redist_send_count[0], 1, MPI_INT, &redist_recv_count[0], 1, MPI_INT, MPI_COMM_WORLD);
+
+            // compute sending+recieving offsets to/from each other rank
+            for(int ri=1; ri < numranks; ++ri){
+                redist_send_offset[ri] = redist_send_offset[ri-1] + redist_send_count[ri-1];
+                redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
+            }
+            
+            // resize reciving buffers
+            int tot_num_recv = redist_recv_offset.back() + redist_recv_count.back();
+            resize_read_buffers(recv_particles, tot_num_recv, positionOnly);
+     
+            // OK, all read, now to redsitribute the particles evely-ish across ranks
+            POSVEL_T *fcols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], &r.a[0]};
+            POSVEL_T *fcols_recv_pos[] = {&recv_particles.x[0], &recv_particles.y[0], &recv_particles.z[0], 
+                                          &recv_particles.d[0], &recv_particles.theta[0], &recv_particles.phi[0], 
+                                          &recv_particles.a[0]};
+
+            POSVEL_T *fcols_send_vel[] = {&r.vx[0], &r.vy[0], &r.vz[0]};
+            POSVEL_T *fcols_recv_vel[] = {&recv_particles.vx[0], &recv_particles.vy[0], &recv_particles.vz[0]};
+            
+            for(int coln; coln < 7; coln++){
+                MPI_Alltoallv(fcols_send_pos[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                              fcols_recv_pos[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                              MPI_COMM_WORLD);
+            }
+            MPI_Alltoallv(&r.id[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT64_T,
+                          &recv_particles.id[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_INT64_T, 
+                          MPI_COMM_WORLD);
+
+            if(!positionOnly)
+                for(int coln; coln < 3; coln++){
+                    MPI_Alltoallv(fcols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                                  fcols_recv_vel[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                                  MPI_COMM_WORLD);
+                }
+                MPI_Alltoallv(&r.replication[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT32_T,
+                              &recv_particles.replication[0], &redist_recv_count[0], &redist_recv_offset[0], 
+                              MPI_INT32_T, MPI_COMM_WORLD);
+                MPI_Alltoallv(&r.rotation[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT,
+                              &recv_particles.rotation[0], &redist_recv_count[0], &redist_recv_offset[0], 
+                              MPI_INT, MPI_COMM_WORLD);
+            
+            // particles now redistributed; find new Np to verify all particles accounted for
+            Np = recv_particles.id.size(); 
+             
+            vector<size_t> Np_recv_per_rank(numranks); 
+            MPI_Allgather(&Np, 1, MPI_INT64_T, &Np_recv_per_rank[0], 1, MPI_INT64_T, 
+                          MPI_COMM_WORLD);
+
+            totalNp = 0;
+            for(int ri = 0; ri < numranks; ++ri){
+                totalNp += Np_recv_per_rank[ri];
+            }
+            size_t avg_Np_recv_per_rank = (size_t)(totalNp/numranks);
+            if(myrank == 0){
+                cout << "Total number of particles after redistribution is " << totalNp << " (about " << 
+                        avg_Np_recv_per_rank << " particles per rank)" << endl;
+            }   
+
+            MPI_Barrier(MPI_COMM_WORLD);
+            stop = MPI_Wtime(); 
+            duration = stop - start;
+            if(myrank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
+            redist_times.push_back(duration);
+            
+            // ************ debug *****************
+            
+            if(numranks == 2){
+                MPI_Status staty;
+                int lock; 
+                if(myrank == 0){ lock = 1;}
+                if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
+
+                float avg_theta_rank = 0;
+                float avg_phi_rank = 0;
+                for(int qq; qq < Np; qq++){
+                    avg_theta_rank = avg_theta_rank + recv_particles.theta[qq];
+                    avg_phi_rank = avg_phi_rank + recv_particles.phi[qq];
+                }
+                avg_theta_rank = avg_theta_rank / recv_particles.id.size();
+                avg_phi_rank = avg_phi_rank / recv_particles.id.size();
+
+                cout << "\nparticles at rank " << myrank << " after redist: " << Np << endl;
+                cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
+                "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
+                
+                if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
+            }
+            // ************ debug *****************
+
+            MPI_Barrier(MPI_COMM_WORLD);
+        
+        } // end of read-in scope (read buffers r destroyed here)
 
 
         ///////////////////////////////////////////////////////////////
@@ -1105,10 +1113,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         int idx=0;
         std::iota(theta_argSort.begin(), theta_argSort.end(), idx++);
         stable_sort(theta_argSort.begin(), theta_argSort.end(), 
-             [&](int n, int m){return recv_particles_pos.theta[n] < recv_particles_pos.theta[m];} );
+             [&](int n, int m){return recv_particles.theta[n] < recv_particles.theta[m];} );
         
         // sort recv_particles_pos such that theta is in ascending order
-        sort_read_buffers(recv_particles, theta_argSort, positonOnly);
+        sort_read_buffers(recv_particles, theta_argSort, positionOnly);
         
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime(); 
@@ -1220,15 +1228,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // "theta" attribute. So, we can do a binary search for our rough theta bounds
             // to limit our following brute force search to an annulus around the sky 
             // parallel to the equator...
-            particle_pos left_dummy;
-            left_dummy = theta_cut_rough[haloIdx][0];
-            particle_pos right_dummy;
-            right_dummy.theta = theta_cut_rough[haloIdx][1];
-            
             auto leftCut_iter = std::lower_bound(recv_particles.theta.begin(), recv_particles.theta.end(), 
-                                                 theta_rough_cut[haloIdx][0]);
+                                                 theta_cut_rough[haloIdx][0]);
             auto rightCut_iter = std::lower_bound(recv_particles.theta.begin(), recv_particles.theta.end(), 
-                                                  theta_rough_cut[haloIdx][1]);
+                                                  theta_cut_rough[haloIdx][1]);
             
             int minN = std::distance(recv_particles.theta.begin(), leftCut_iter);
             int maxN = std::distance(recv_particles.theta.begin(), rightCut_iter);
