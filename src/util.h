@@ -69,32 +69,6 @@ struct Buffers_write {
     vector<int> np_offset; // cumulative sum of np_count
 };
 
-struct particle_pos {
-
-    // struct for containing individual "primary" particle quantities
-    // d is sqrt(x^2 + y^2 + z^2)
-    POSVEL_T x;
-    POSVEL_T y;
-    POSVEL_T z;
-    POSVEL_T d;
-    POSVEL_T theta;
-    POSVEL_T phi;
-    POSVEL_T a;
-    ID_T id;
-    int myrank;
-};
-
-struct particle_vel {
-
-    // struct for containing individual "secondary" particle quantities
-    POSVEL_T vx;
-    POSVEL_T vy;
-    POSVEL_T vz;
-    int rotation;
-    int32_t replication;
-    int myrank;
-};
-
 
 //======================================================================================
 
@@ -104,9 +78,6 @@ struct particle_vel {
 //               reading functions
 //
 //////////////////////////////////////////////////////
-
-MPI_Datatype createParticles_pos();
-MPI_Datatype createParticles_vel();
 
 template<typename T>
 void reorder_vec(T &vec, const vector<int> &map) 
@@ -159,8 +130,6 @@ void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extra
 void sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly);
 
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
-
-bool comp_by_theta(const particle_pos &a, const particle_pos &b);
 
 bool does_file_exist(string filename);
 

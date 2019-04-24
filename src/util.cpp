@@ -10,69 +10,6 @@ using namespace std;
 //////////////////////////////////////////////////////
 
 
-MPI_Datatype createParticles_pos(){
-    // This function creates and returns an MPI struct type which has a field per 
-    // "primary" particle quantity (position, redshift, id and rank). 
-    // One particle shall be represented by one "particles_mpi" object, which is 
-    // based upon the "particle_pos" struct in util.h
-    //
-    // Params:
-    // :return: a struct of custom MPI type "particles_mpi"
-
-    MPI_Datatype particles_mpi;
-    MPI_Datatype type[9] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
-                            MPI_FLOAT, MPI_FLOAT, MPI_INT64_T, MPI_INT};
-    int blocklen[9] = {1,1,1,1,1,1,1,1};
-    MPI_Aint disp[9] = {
-                         offsetof(particle_pos, x),
-                         offsetof(particle_pos, y),
-                         offsetof(particle_pos, z),
-                         offsetof(particle_pos, d),
-                         offsetof(particle_pos, theta),
-                         offsetof(particle_pos, phi),
-                         offsetof(particle_pos, a),
-                         offsetof(particle_pos, id),
-                         offsetof(particle_pos, myrank)
-                        };
-    MPI_Type_struct(9, blocklen, disp, type, &particles_mpi);
-    MPI_Type_commit(&particles_mpi);
-    return particles_mpi;
-}
-
-
-//======================================================================================
-
-
-MPI_Datatype createParticles_vel(){
-    // This function creates and returns an MPI struct type which has a field per 
-    // "secondary" particle quantity (velocity, rotation and replication info). 
-    // One particle shall be represented by one "particles_mpi" object, which is 
-    // based upon the "particle_vel" struct in util.h
-    //
-    // Params:
-    // :return: a struct of custom MPI type "particles_mpi"
-
-    MPI_Datatype particles_mpi;
-    MPI_Datatype type[6] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, 
-                             MPI_INT, MPI_INT32_T, MPI_INT};
-    int blocklen[6] = {1,1,1,1,1,1};
-    MPI_Aint disp[6] = {
-                         offsetof(particle_vel, vx),
-                         offsetof(particle_vel, vy),
-                         offsetof(particle_vel, vz),
-                         offsetof(particle_vel, rotation),
-                         offsetof(particle_vel, replication),
-                         offsetof(particle_vel, myrank)
-                        };
-    MPI_Type_struct(6, blocklen, disp, type, &particles_mpi);
-    MPI_Type_commit(&particles_mpi);
-    return particles_mpi;
-}
-
-
-//======================================================================================
-
-
 void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace){
 
         r.x.resize(size + extraSpace/sizeof(POSVEL_T));
@@ -132,21 +69,6 @@ void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
     for(int j = 0; j < Np; ++j){
         idxRemap.push_back(int(j / np_per_rank));
     }
-}
-
-
-//======================================================================================
-
-
-bool comp_by_theta(const particle_pos &a, const particle_pos &b){
-    // Compares two particle_pos structs by their 'theta' field
-    //
-    // Params:
-    // :param a: a particle_pos struct
-    // :param b: a particle_pos struct
-    // :return: 1 if a.theta < b.theta, 0 otherwise
-    
-    return a.theta < b.theta;
 }
 
 

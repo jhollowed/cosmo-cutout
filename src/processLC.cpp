@@ -786,9 +786,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     size_t max_size = 0;
     int step;
  
-    MPI_Datatype particles_mpi_pos = createParticles_pos();
-    MPI_Datatype particles_mpi_vel = createParticles_vel();
-
     vector<double> read_times;
     vector<double> redist_times;
     vector<double> sort_times;
