@@ -22,7 +22,7 @@ MPI_Datatype createParticles_pos(){
     MPI_Datatype particles_mpi;
     MPI_Datatype type[9] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
                             MPI_FLOAT, MPI_FLOAT, MPI_INT64_T, MPI_INT};
-    int blocklen[9] = {1,1,1,1,1,1,1,1};
+    int blocklen[9] = {1,1,1,1,1,1,1,1,1};
     MPI_Aint disp[9] = {
                          offsetof(particle_pos, x),
                          offsetof(particle_pos, y),
