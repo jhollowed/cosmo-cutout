@@ -80,37 +80,6 @@ struct Buffers_write {
 //////////////////////////////////////////////////////
 
 template<typename T>
-void reorder_vec(T &vec, const vector<int> &map) 
-{ 
-    int n = vec.size();
-    vector<int> mod_map = map;
-    
-    // Fix all elements one by one 
-    for (int i=0; i<n; i++) 
-    { 
-        // While mod_map[i] and vec[i] are not fixed 
-        while (mod_map[i] != i) 
-        { 
-            // Store values of the target (or correct)  
-            // position before placing vec[i] there 
-            int  oldTargetI  = mod_map[mod_map[i]]; 
-            auto oldTargetE  = vec[mod_map[i]]; 
-  
-            // Place vec[i] at its target (or correct) 
-            // position. Also copy corrected mod_map for 
-            // new position 
-            vec[mod_map[i]] = vec[i]; 
-            mod_map[mod_map[i]] = mod_map[i]; 
-  
-            // Copy old target values to vec[i] and 
-            // mod_map[i] 
-            mod_map[i] = oldTargetI; 
-            vec[i]   = oldTargetE; 
-        } 
-    } 
-} 
-
-template<typename T>
 bool comp_rank(const T &a, const T &b){
     // compare the myrank fields of two structs. Type T should be either a
     // particle_pos or particle_vel
@@ -127,7 +96,7 @@ bool comp_rank(const T &a, const T &b){
 
 void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace=0);
 
-void sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly);
+void reorder_vec(vector<float> &v, const vector<int> &map);
 
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
 

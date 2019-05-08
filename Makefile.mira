@@ -1,5 +1,5 @@
 CPP := mpicxx
-CPPFLAGS := -O3
+CPPFLAGS := -O3 -std=c++11
 SRCDIR := ./src
 TOPDIR := ./mira
 OBJDIR := $(TOPDIR)/obj

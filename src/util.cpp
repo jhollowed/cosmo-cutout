@@ -33,23 +33,14 @@ void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extra
 //======================================================================================
 
 
-void sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly){
+void reorder_vec(vector<float> &v, const vector<int> &map){
 
-   reorder_vec(r.x, map);
-   reorder_vec(r.y, map);
-   reorder_vec(r.z, map);
-   reorder_vec(r.d, map);
-   reorder_vec(r.id, map);
-   reorder_vec(r.a, map);
-   reorder_vec(r.theta, map);
-   reorder_vec(r.phi, map);
-   if(!positionOnly){
-       reorder_vec(r.vx, map);
-       reorder_vec(r.vy, map);
-       reorder_vec(r.vz, map);
-       reorder_vec(r.replication, map);
-       reorder_vec(r.rotation, map);
-   }
+    vector<float> vtmp;
+    vtmp.resize(v.size());
+    for(int i=0; i < v.size(); i++){
+        vtmp[i] = v[map[i]];
+    }
+    v = vtmp;
 }
 
 
