@@ -11,6 +11,16 @@ using namespace std;
 
 
 void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace){
+        // Resizes all vectors in an instance of the Buffers_read struct as defined in util.h
+        //
+        // Params:
+        // :param r: an instance of Buffers_read
+        // :param size: a number of elements to size the vectors for
+        // :param positionOnly: whether or not to ignore the velocity, rotataion and 
+        //        replication vectors for resizing
+        // :param extraSpace: an optional extra amount of space to include, given in 
+        //                    bytes (will be divided by the vector dataype internally)
+        // :return: None
 
         r.x.resize(size + extraSpace/sizeof(POSVEL_T));
         r.y.resize(size + extraSpace/sizeof(POSVEL_T));
@@ -27,20 +37,6 @@ void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extra
             r.rotation.resize(size + extraSpace/sizeof(int));
             r.replication.resize(size + extraSpace/sizeof(int32_t));
         }
-}
-
-
-//======================================================================================
-
-
-void reorder_vec(vector<float> &v, const vector<int> &map){
-
-    vector<float> vtmp;
-    vtmp.resize(v.size());
-    for(int i=0; i < v.size(); i++){
-        vtmp[i] = v[map[i]];
-    }
-    v = vtmp;
 }
 
 

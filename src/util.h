@@ -96,8 +96,6 @@ bool comp_rank(const T &a, const T &b){
 
 void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace=0);
 
-void reorder_vec(vector<float> &v, const vector<int> &map);
-
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
 
 bool does_file_exist(string filename);
