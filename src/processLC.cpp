@@ -1057,30 +1057,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             if(myrank == 0 and timeit == true){ cout << "Redistribution time: " << duration << " s" << endl; }
             redist_times.push_back(duration);
             
-            // ************ debug *****************
-            
-            if(numranks == 2){
-                MPI_Status staty;
-                int lock; 
-                if(myrank == 0){ lock = 1;}
-                if(myrank == 1){ MPI_Recv(&lock, 1, MPI_INT, 0, 1234, MPI_COMM_WORLD, &staty);}
-
-                float avg_theta_rank = 0;
-                float avg_phi_rank = 0;
-                for(int qq; qq < Np; qq++){
-                    avg_theta_rank = avg_theta_rank + recv_particles.theta[qq];
-                    avg_phi_rank = avg_phi_rank + recv_particles.phi[qq];
-                }
-                avg_theta_rank = avg_theta_rank / recv_particles.id.size();
-                avg_phi_rank = avg_phi_rank / recv_particles.id.size();
-
-                cout << "\nparticles at rank " << myrank << " after redist: " << Np << endl;
-                cout << "avg theta at rank " << myrank << ": " << avg_theta_rank << 
-                "\navg phi at rank " << myrank << ": " << avg_phi_rank << endl << endl;
-                
-                if(myrank == 0){MPI_Send(&lock, 1, MPI_INT, 1, 1234, MPI_COMM_WORLD);}
-            }
-            // ************ debug *****************
         } // end of read-in scope (read buffers r destroyed here)
 
 
@@ -1105,18 +1081,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         stable_sort(theta_argSort.begin(), theta_argSort.end(), 
              [&](int n, int m){return recv_particles.theta[n] < recv_particles.theta[m];} );
 
-        if(myrank == 0){
-           cout << "fist particle t: " << recv_particles.theta[theta_argSort[500]] << endl;
-           cout << "fist particle p: " << recv_particles.phi[theta_argSort[500]] << endl;
-        }
-        
         // sort the theta and phi fields of recv_particles such that theta is in ascending order
         stable_sort(recv_particles.theta.begin(), recv_particles.theta.end()); 
-        
-        if(myrank == 0){
-           cout << "sorted fist particle t: " << recv_particles.theta[500] << endl; 
-           cout << "sorted fist particle p: " << recv_particles.phi[theta_argSort[500]] << endl;
-        }
         
         MPI_Barrier(MPI_COMM_WORLD);
         stop = MPI_Wtime(); 
@@ -1233,20 +1199,12 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             int minN = std::distance(recv_particles.theta.begin(), leftCut_iter);
             int maxN = std::distance(recv_particles.theta.begin(), rightCut_iter);
             
-            if(myrank == 0){
-                cout << phi_cut_rough[haloIdx][0] << " ____ " << phi_cut_rough[haloIdx][1] << endl;
-                cout << "min: " << minN << endl;
-                cout << "max: " << maxN << endl;
-            }
-
             // Now, brute force search on phi to finish rough cutout
             for (int n=minN; n<maxN; ++n) {
                 
                 // get phi corresponding to theta-sorted index
                 int match = theta_argSort[n];
                 float phi = recv_particles.phi[match];
-                if(n % 500 == 0 and myrank == 0){ cout << phi_cut_rough[haloIdx][0] << " < " << phi << " < " << 
-                                                          phi_cut_rough[haloIdx][1] << "?" << endl;}
 
                 if (phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
                  
