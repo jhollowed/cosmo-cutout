@@ -1300,7 +1300,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                             w.replication.push_back(recv_particles.replication[n]);
                         }
                         cutout_size++;
-                        thisRank_end = clock();
 
                         /*
                         // DEBUG
@@ -1320,6 +1319,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     }
                 }
             }
+            thisRank_end = clock();
 
             MPI_Barrier(MPI_COMM_WORLD);
             
