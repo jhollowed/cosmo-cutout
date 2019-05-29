@@ -1301,9 +1301,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 MPI_Barrier(MPI_COMM_WORLD);
             }
                             
-            auto posIdx_iter = std::find(theta_argSort.begin(), theta_argSort.end(), 0);
-            int posIdx = std::distance(theta_argSort.begin(), posIdx_iter);
-
             // Now, brute force search on phi to finish rough cutout
             for (int n=minN; n<maxN; ++n) {
                 
