@@ -1275,10 +1275,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     }
                     cout << endl;
                     cout << "rank 0 ORDERED: " << ordered << endl;
-                    cout << "rank 0 PHI MIN: " << phi_cut_rough[haloIdx][0] << endl;
-                    cout << "rank 0 PHI MAX: " << phi_cut_rough[haloIdx][1] << endl;
-                    cout << "rank 0 THETA MIN: " << theta_cut_rough[haloIdx][0] << endl;
-                    cout << "rank 0 THETA MAX: " << theta_cut_rough[haloIdx][1] << endl;
+                    cout << "rank 0 PHI ROUGH MIN: " << phi_cut_rough[haloIdx][0] << endl;
+                    cout << "rank 0 PHI ROUGH MAX: " << phi_cut_rough[haloIdx][1] << endl;
+                    cout << "rank 0 THETA ROUGH MIN: " << theta_cut_rough[haloIdx][0] << endl;
+                    cout << "rank 0 THETA ROUGH MAX: " << theta_cut_rough[haloIdx][1] << endl;
+                    cout << "rank 0 PHI MIN: " << phi_cut[haloIdx][0] << endl;
+                    cout << "rank 0 PHI MAX: " << phi_cut[haloIdx][1] << endl;
+                    cout << "rank 0 THETA MIN: " << theta_cut[haloIdx][0] << endl;
+                    cout << "rank 0 THETA MAX: " << theta_cut[haloIdx][1] << endl;
                     cout << "rank 0 MAX IDX: " << maxN << endl;
                     cout << "rank 0 MIN IDX: " << minN << endl;
                 }
@@ -1303,16 +1307,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             }
                             
             // Now, brute force search on phi to finish rough cutout
-            if(myrank == 0){cout << "pp = np.array([";}
-            for (int n=minN; n<=maxN; ++n){ 
-                n = theta_argSort[n]; 
+            for (int idx=minN; idx<=maxN; ++idx){ 
+                
+                int n = theta_argSort[idx]; 
                 float phi = recv_particles.phi[n];
-                if(myrank == 0){ 
-                    cout << phi; 
-                    if(n == maxN){ cout << endl;}
-                    else{cout << ",";}
-                } 
-                MPI_Barrier(MPI_COMM_WORLD);
 
                 if (phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
                  
