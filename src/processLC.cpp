@@ -1303,10 +1303,16 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             }
                             
             // Now, brute force search on phi to finish rough cutout
-            for (int n=minN; n<maxN; ++n) {
-                
+            if(myrank == 0){cout << "pp = np.array([";}
+            for (int n=minN; n<=maxN; ++n){ 
                 n = theta_argSort[n]; 
                 float phi = recv_particles.phi[n];
+                if(myrank == 0){ 
+                    cout << phi; 
+                    if(n == maxN){ cout << endl;}
+                    else{cout << ",";}
+                } 
+                MPI_Barrier(MPI_COMM_WORLD);
 
                 if (phi > phi_cut_rough[haloIdx][0] && phi < phi_cut_rough[haloIdx][1]) {
                  
