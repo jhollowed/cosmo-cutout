@@ -1247,6 +1247,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             }
             
             int cutout_size = 0;
+            int rough_cutout_size = 0;
             
             // define vectors joining fov corners to particle (see comments/diagram above)
             vector<float> AM(2);
@@ -1334,6 +1335,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         v_phi = -90.0 * ARCSEC;
                     else
                         v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
+                    rough_cutout_size++;
                          
                     // do final cut
                     if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
@@ -1443,6 +1445,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // define MPI file writing offset for the current rank --
             // This offset will be the sum of elements in all lesser ranks,
             // multiplied by the type size for each file    
+            w.np_rough_count.clear();
+            w.np_rough_count.resize(numranks);
             w.np_count.clear();
             w.np_count.resize(numranks);
             w.np_offset.clear();
@@ -1451,6 +1455,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // get number of elements in each ranks portion of cutout 
             MPI_Allgather(&cutout_size, 1, MPI_INT, 
                           &w.np_count[0], 1, MPI_INT, MPI_COMM_WORLD);
+            MPI_Allgather(&rough_cutout_size, 1, MPI_INT, 
+                          &w.np_rough_count[0], 1, MPI_INT, MPI_COMM_WORLD);
+            int tot_cutout_size; for(int i=0;i<numranks;++i){tot_cutout_size += w.np_count[i];}
+            int tot_rough_cutout_size; for(int i=0;i<numranks;++i){tot_cutout_size += w.np_rough_count[i];}
+            if(myrank == 0){
+                cout << "(" << tot_rough_cutout_size << ") " << tot_cutout_size << 
+                        "total particles in (rough) cutout" << endl;
+            }
             
             // compute each ranks writing offset
             for(int j=1; j < numranks; ++j){
@@ -1468,9 +1480,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     for(int m=0; m < numranks; ++m){ cout << w.np_offset[m] << ","; }
                     cout << "]" << endl;
                 } else {
-                   int numEmpty = count(&w.np_count[0], &w.np_count[numranks], 0);
-                   cout << numranks - numEmpty << " of " << numranks << 
-                   " ranks found members within cutout field of view" << endl;
+                    int numEmpty = count(&w.np_count[0], &w.np_count[numranks], 0);
+                    cout << numranks - numEmpty << " of " << numranks << 
+                    " ranks found members within cutout field of view" << endl;
                 }
                 cout << "Writing files..." << endl;
             }

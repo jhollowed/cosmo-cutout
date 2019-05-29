@@ -65,7 +65,8 @@ struct Buffers_write {
     vector<POSVEL_T> phi;
     
     // Buffers to fill with MPI file writing offset values
-    vector<int> np_count; // length of output data vecotrs for each rank
+    vector<int> np_rough_count; // length of particle vectors after rough cut (pre-rotation) for each rank
+    vector<int> np_count; // length of output data vecotrs after refined cut (post-rotation) for each rank
     vector<int> np_offset; // cumulative sum of np_count
 };
 
