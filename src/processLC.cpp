@@ -1272,11 +1272,14 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         if(recv_particles.theta[i] > recv_particles.theta[i+1])
                             ordered = false;
                     }
-                    cout << "0 ORDERED: " << ordered << endl;
-                    cout << "0 THETA MIN: " << theta_cut_rough[haloIdx][0] << endl;
-                    cout << "0 THETA MAX: " << theta_cut_rough[haloIdx][1] << endl;
-                    cout << "0 MAX: " << maxN << endl;
-                    cout << "0 MIN: " << minN << endl;
+                    cout << endl;
+                    cout << "rank 0 ORDERED: " << ordered << endl;
+                    cout << "rank 0 PHI MIN: " << phi_cut_rough[haloIdx][0] << endl;
+                    cout << "rank 0 PHI MAX: " << phi_cut_rough[haloIdx][1] << endl;
+                    cout << "rank 0 THETA MIN: " << theta_cut_rough[haloIdx][0] << endl;
+                    cout << "rank 0 THETA MAX: " << theta_cut_rough[haloIdx][1] << endl;
+                    cout << "rank 0 MAX IDX: " << maxN << endl;
+                    cout << "rank 0 MIN IDX: " << minN << endl;
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
                 if(myrank == 1){
@@ -1285,14 +1288,18 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         if(recv_particles.theta[i] > recv_particles.theta[i+1])
                             ordered = false;
                     }
-                    cout << "0 ORDERED: " << ordered << endl;
-                    cout << "1 THETA MIN: " << theta_cut_rough[haloIdx][0] << endl;
-                    cout << "1 THETA MAX: " << theta_cut_rough[haloIdx][1] << endl;
-                    cout << "1 MAX: " << maxN << endl;
-                    cout << "1 MIN: " << minN << endl;
+                    cout << endl;
+                    cout << "rank 1  ORDERED: " << ordered << endl;
+                    cout << "rank 1 PHI MIN: " << phi_cut_rough[haloIdx][0] << endl;
+                    cout << "rank 1 PHI MAX: " << phi_cut_rough[haloIdx][1] << endl;
+                    cout << "rank 1 THETA MIN: " << theta_cut_rough[haloIdx][0] << endl;
+                    cout << "rank 1 THETA MAX: " << theta_cut_rough[haloIdx][1] << endl;
+                    cout << "rank 1 MAX IDX: " << maxN << endl;
+                    cout << "rank 1 MIN IDX: " << minN << endl;
+                    cout << endl;
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
-           }
+            }
                             
             auto posIdx_iter = std::find(theta_argSort.begin(), theta_argSort.end(), 0);
             int posIdx = std::distance(theta_argSort.begin(), posIdx_iter);
