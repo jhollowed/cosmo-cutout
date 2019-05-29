@@ -1413,7 +1413,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     for(int cc = 0; cc < numranks; ++cc){
                         cout << allRank_secs[cc] << ", ";
                     }
-                    cout << endl;        
+                    cout << "]" << endl;        
 
                     for(int cc = 0; cc < numranks; ++cc){
                         if(allRank_secs[cc] < min_compTime){ min_compTime = allRank_secs[cc];}
@@ -1458,10 +1458,10 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             MPI_Allgather(&rough_cutout_size, 1, MPI_INT, 
                           &w.np_rough_count[0], 1, MPI_INT, MPI_COMM_WORLD);
             int tot_cutout_size; for(int i=0;i<numranks;++i){tot_cutout_size += w.np_count[i];}
-            int tot_rough_cutout_size; for(int i=0;i<numranks;++i){tot_cutout_size += w.np_rough_count[i];}
+            int tot_rough_cutout_size; for(int i=0;i<numranks;++i){tot_rough_cutout_size += w.np_rough_count[i];}
             if(myrank == 0){
                 cout << "(" << tot_rough_cutout_size << ") " << tot_cutout_size << 
-                        "total particles in (rough) cutout" << endl;
+                        " total particles in (rough) cutout" << endl;
             }
             
             // compute each ranks writing offset
