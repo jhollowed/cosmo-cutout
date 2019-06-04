@@ -840,7 +840,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         //
         ///////////////////////////////////////////////////////////////
        
-        // instances of buffer struct at file header for particle data after redisribution
+        // declare particle read buffers to hold data after redistribution (has to be declared in this scope)
         Buffers_read recv_particles;
         size_t Np = 0;
         
@@ -1021,18 +1021,21 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // compute sending+recieving offsets to/from each other rank
             // SUPPRESSED DEBUG
             //if(myrank == 0){cout << "2" << endl;}
+            redist_send_offset[0] = 0;
+            redist_recv_offset[0] = 0;
             for(int ri=1; ri < numranks; ++ri){
                 redist_send_offset[ri] = redist_send_offset[ri-1] + redist_send_count[ri-1];
                 redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
             }
             
-            // resize reciving buffers
+            // resize receiving buffers
             // SUPPRESSED DEBUG
             //if(myrank == 0){cout << "3" << endl;}
             int tot_num_recv = redist_recv_offset.back() + redist_recv_count.back();
             resize_read_buffers(recv_particles, tot_num_recv, positionOnly);
      
             // OK, all read, now to redsitribute the particles evely-ish across ranks
+            // do all the float quantities in a for loop, then fianlly the int64_t ids
             // SUPPRESSED DEBUG
             //if(myrank == 0){cout << "4" << endl;}
             POSVEL_T *fcols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], &r.a[0]};
