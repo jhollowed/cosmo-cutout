@@ -1035,26 +1035,51 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             resize_read_buffers(recv_particles, tot_num_recv, positionOnly);
      
             // OK, all read, now to redsitribute the particles evely-ish across ranks
-            // do all the float quantities in a for loop, then fianlly the int64_t ids
+            // do all the float quantities in a for loop, then individually communicate 
+            // the integer columns
             // SUPPRESSED DEBUG
             //if(myrank == 0){cout << "4" << endl;}
-            POSVEL_T *fcols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], &r.a[0]};
-            POSVEL_T *fcols_recv_pos[] = {&recv_particles.x[0], &recv_particles.y[0], &recv_particles.z[0], 
-                                          &recv_particles.d[0], &recv_particles.theta[0], &recv_particles.phi[0], 
-                                          &recv_particles.a[0]};
+            //POSVEL_T *fcols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], &r.a[0]};
+            //POSVEL_T *fcols_recv_pos[] = {&recv_particles.x[0], &recv_particles.y[0], &recv_particles.z[0], 
+            //                              &recv_particles.d[0], &recv_particles.theta[0], &recv_particles.phi[0], 
+            //                              &recv_particles.a[0]};
 
             // SUPPRESSED DEBUG
             //if(myrank == 0){cout << "5" << endl;}
-            POSVEL_T *fcols_send_vel[] = {&r.vx[0], &r.vy[0], &r.vz[0]};
-            POSVEL_T *fcols_recv_vel[] = {&recv_particles.vx[0], &recv_particles.vy[0], &recv_particles.vz[0]};
+            //POSVEL_T *fcols_send_vel[] = {&r.vx[0], &r.vy[0], &r.vz[0]};
+            //POSVEL_T *fcols_recv_vel[] = {&recv_particles.vx[0], &recv_particles.vy[0], &recv_particles.vz[0]};
             
             // SUPPRESSED DEBUG
             //if(myrank == 0){cout << "6" << endl;}
-            for(int coln; coln < 7; coln++){
-                MPI_Alltoallv(fcols_send_pos[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
-                              fcols_recv_pos[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
-                              MPI_COMM_WORLD);
-            }
+            
+            //for(int coln; coln < 7; coln++){
+            //    MPI_Alltoallv(fcols_send_pos[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+            //                  fcols_recv_pos[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+            //                  MPI_COMM_WORLD);
+            //}
+            
+            
+            MPI_Alltoallv(&r.x[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                          &recv_particles.x[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                          MPI_COMM_WORLD);
+            MPI_Alltoallv(&r.y[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                          &recv_particles.y[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                          MPI_COMM_WORLD);
+            MPI_Alltoallv(&r.z[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                          &recv_particles.z[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                          MPI_COMM_WORLD);
+            MPI_Alltoallv(&r.theta[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                          &recv_particles.theta[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                          MPI_COMM_WORLD);
+            MPI_Alltoallv(&r.phi[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                          &recv_particles.phi[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                          MPI_COMM_WORLD);
+            MPI_Alltoallv(&r.a[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                          &recv_particles.a[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                          MPI_COMM_WORLD);
+            MPI_Alltoallv(&r.d[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                          &recv_particles.d[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                          MPI_COMM_WORLD);
             MPI_Alltoallv(&r.id[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT64_T,
                           &recv_particles.id[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_INT64_T, 
                           MPI_COMM_WORLD);
@@ -1062,17 +1087,27 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // SUPPRESSED DEBUG
             //if(myrank == 0){cout << "7" << endl;}
             if(!positionOnly){
-                for(int coln; coln < 3; coln++){
-                    MPI_Alltoallv(fcols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
-                                  fcols_recv_vel[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
-                                  MPI_COMM_WORLD);
-                }
+            
+                MPI_Alltoallv(&r.vx[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                              &recv_particles.vx[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                              MPI_COMM_WORLD);
+                MPI_Alltoallv(&r.vy[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                              &recv_particles.vy[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                              MPI_COMM_WORLD);
+                MPI_Alltoallv(&r.vz[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                              &recv_particles.vz[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                              MPI_COMM_WORLD);
                 MPI_Alltoallv(&r.replication[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT32_T,
                               &recv_particles.replication[0], &redist_recv_count[0], &redist_recv_offset[0], 
                               MPI_INT32_T, MPI_COMM_WORLD);
                 MPI_Alltoallv(&r.rotation[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT,
                               &recv_particles.rotation[0], &redist_recv_count[0], &redist_recv_offset[0], 
                               MPI_INT, MPI_COMM_WORLD);
+                //for(int coln; coln < 3; coln++){
+                //    MPI_Alltoallv(fcols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
+                //                  fcols_recv_vel[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
+                //                  MPI_COMM_WORLD);
+                //}
             }
             
             // SUPPRESSED DEBUG
@@ -1104,6 +1139,35 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             if(myrank == 0){ cout << endl;}
             MPI_Barrier(MPI_COMM_WORLD);
             if(numranks == 2){
+
+                if(myrank == 0){ 
+                    cout << "RANK 0 SENDING COUNTS: [";
+                    for(int rr=0; rr<numranks; ++rr){ cout << redist_send_count[rr] << ", ";}
+                    cout << "]" << endl;
+                    cout << "RANK 0 RECEIVING COUNTS: [";
+                    for(int rr=0; rr<numranks; ++rr){ cout << redist_recv_count[rr] << ", ";}
+                    cout << "]" << endl;
+                    cout << "RANK 0 r.theta: [";
+                    for(int rr=0; rr<20; ++rr){ cout << r.theta[rr] << ", ";}
+                    cout << "]" << endl;
+                    cout << "RANK 0 even_redist: [";
+                    for(int rr=0; rr<20; ++rr){ cout << even_redistribute[rr] << ", ";}
+                    cout << "]" << endl;
+                    cout << "RANK 0 recv_particles.theta: [";
+                    for(int rr=0; rr<20; ++rr){ cout << recv_particles.theta[rr] << ", ";}
+                    cout << "]" << endl;
+
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(myrank == 1){ 
+                    cout << "RANK 1 SENDING COUNTS: [";
+                    for(int rr=0; rr<numranks; ++rr){ cout << redist_send_count[rr] << ", ";}
+                    cout << "]" << endl;
+                    cout << "RANK 1 RECEIVING COUNTS: [";
+                    for(int rr=0; rr<numranks; ++rr){ cout << redist_recv_count[rr] << ", ";}
+                    cout << "]" << endl;
+                }
+
                 float max_theta_rank = -1e9;
                 float min_theta_rank = 1e9;
                 float avg_theta_rank = 0;
