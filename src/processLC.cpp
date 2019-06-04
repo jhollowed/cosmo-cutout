@@ -930,7 +930,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 float min_theta_rank = 1e9;
                 float avg_theta_rank = 0;
                 float avg_phi_rank = 0;
-                for(int qq; qq < Np; qq++){
+                for(int qq=0; qq < Np; qq++){
                     if(r.theta[qq] > max_theta_rank)
                         max_theta_rank = r.theta[qq];
                     if(r.theta[qq] < min_theta_rank)
@@ -1006,33 +1006,40 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             vector<int> redist_recv_offset(numranks);
             
             // compute number of particles to send to each other rank
+            if(myrank == 0){cout << "0" << endl;}
             comp_rank_scatter(Np, even_redistribute, numranks);
             for(int ri = 0; ri < numranks; ++ri){
                 redist_send_count[ri] = count(&even_redistribute[0], &even_redistribute[Np], ri);
             }
             
             // get number of particles to recieve from every other rank
+            if(myrank == 0){cout << "1" << endl;}
             MPI_Alltoall(&redist_send_count[0], 1, MPI_INT, &redist_recv_count[0], 1, MPI_INT, MPI_COMM_WORLD);
 
             // compute sending+recieving offsets to/from each other rank
+            if(myrank == 0){cout << "2" << endl;}
             for(int ri=1; ri < numranks; ++ri){
                 redist_send_offset[ri] = redist_send_offset[ri-1] + redist_send_count[ri-1];
                 redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
             }
             
             // resize reciving buffers
+            if(myrank == 0){cout << "3" << endl;}
             int tot_num_recv = redist_recv_offset.back() + redist_recv_count.back();
             resize_read_buffers(recv_particles, tot_num_recv, positionOnly);
      
             // OK, all read, now to redsitribute the particles evely-ish across ranks
+            if(myrank == 0){cout << "4" << endl;}
             POSVEL_T *fcols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], &r.a[0]};
             POSVEL_T *fcols_recv_pos[] = {&recv_particles.x[0], &recv_particles.y[0], &recv_particles.z[0], 
                                           &recv_particles.d[0], &recv_particles.theta[0], &recv_particles.phi[0], 
                                           &recv_particles.a[0]};
 
+            if(myrank == 0){cout << "5" << endl;}
             POSVEL_T *fcols_send_vel[] = {&r.vx[0], &r.vy[0], &r.vz[0]};
             POSVEL_T *fcols_recv_vel[] = {&recv_particles.vx[0], &recv_particles.vy[0], &recv_particles.vz[0]};
             
+            if(myrank == 0){cout << "6" << endl;}
             for(int coln; coln < 7; coln++){
                 MPI_Alltoallv(fcols_send_pos[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
                               fcols_recv_pos[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
@@ -1042,6 +1049,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                           &recv_particles.id[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_INT64_T, 
                           MPI_COMM_WORLD);
 
+            if(myrank == 0){cout << "7" << endl;}
             if(!positionOnly){
                 for(int coln; coln < 3; coln++){
                     MPI_Alltoallv(fcols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
@@ -1056,6 +1064,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                               MPI_INT, MPI_COMM_WORLD);
             }
             
+            if(myrank == 0){cout << "8" << endl;}
             // particles now redistributed; find new Np to verify all particles accounted for
             Np = recv_particles.id.size(); 
              
@@ -1087,7 +1096,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 float min_theta_rank = 1e9;
                 float avg_theta_rank = 0;
                 float avg_phi_rank = 0;
-                for(int qq; qq < Np; qq++){
+                for(int qq=0; qq < Np; qq++){
                     if(recv_particles.theta[qq] > max_theta_rank)
                         max_theta_rank = recv_particles.theta[qq];
                     if(recv_particles.theta[qq] < min_theta_rank)
@@ -1295,10 +1304,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     }
                     cout << endl;
                     cout << "rank 1  ORDERED: " << ordered << endl;
-                    cout << "rank 1 PHI MIN: " << phi_cut_rough[haloIdx][0] << endl;
-                    cout << "rank 1 PHI MAX: " << phi_cut_rough[haloIdx][1] << endl;
-                    cout << "rank 1 THETA MIN: " << theta_cut_rough[haloIdx][0] << endl;
-                    cout << "rank 1 THETA MAX: " << theta_cut_rough[haloIdx][1] << endl;
                     cout << "rank 1 MAX IDX: " << maxN << endl;
                     cout << "rank 1 MIN IDX: " << minN << endl;
                     cout << endl;
@@ -1307,7 +1312,16 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             }
                             
             // Now, brute force search on phi to finish rough cutout
-            for (int idx=minN; idx<=maxN; ++idx){ 
+            for (int idx=minN; idx<maxN; ++idx){ 
+                
+                if(myrank == 0){
+                    cout << "RANK " << myrank << " AT IDX: " << idx << endl; 
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(myrank == 1){
+                    cout << "RANK " << myrank << " AT IDX: " << idx << endl; 
+                } 
+                MPI_Barrier(MPI_COMM_WORLD);
                 
                 int n = theta_argSort[idx]; 
                 float phi = recv_particles.phi[n];
@@ -1321,14 +1335,22 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     // do coordinate rotation center halo at (r, 90, 0)
                     // B and k are the angle and axis of rotation, respectively,
                     // calculated near the beginning of this function
+                    
+                    //if(myrank == 0 and idx%500 == 0){
+                    //    cout << "[x,y,z,t,p] = " << recv_particles.x[n] << ", " <<
+                    //                                recv_particles.y[n] << ", " <<
+                    //                                recv_particles.z[n] << ", " <<
+                    //                                recv_particles.theta[idx] << ", " <<
+                    //                                phi << "]" << endl;
+                    //}
+
                     float tmp_v[] = {recv_particles.x[n], recv_particles.y[n], recv_particles.z[n]};
                     vector<float> v(tmp_v, tmp_v+3);
                     vector<float> v_rot;
                     v_rot = matVecMul(R[haloIdx], v);
 
                     // spherical coordinate transformation
-                    float d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + 
-                                          v_rot[2]*v_rot[2]);
+                    float d = (float)sqrt(v_rot[0]*v_rot[0] + v_rot[1]*v_rot[1] + v_rot[2]*v_rot[2]);
                     float v_theta = acos(v_rot[2]/d) * 180.0 / PI * ARCSEC;
                     float v_phi;
 
@@ -1340,7 +1362,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     else
                         v_phi = atan(v_rot[1]/v_rot[0]) * 180.0 / PI * ARCSEC; 
                     rough_cutout_size++;
-                         
+
                     // do final cut
                     if (v_theta > theta_cut[haloIdx][0] && v_theta < theta_cut[haloIdx][1] && 
                         v_phi > phi_cut[haloIdx][0] && v_phi < phi_cut[haloIdx][1] ) {
@@ -1456,13 +1478,26 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             w.np_offset.clear();
             w.np_offset.push_back(0);
 
-            // get number of elements in each ranks portion of cutout 
+            // get number of elements in each ranks portion of cutout
+            
+            if(myrank == 0){
+                cout << "RANK " << myrank << " CUTOUT COUNT: " << cutout_size << endl; 
+                cout << "RANK " << myrank << " ROUGH CUTOUT COUNT: " << rough_cutout_size << endl; 
+                cout << "RANK " << myrank << " CUTOUT COUNT SIZE: " << w.x.size() << endl;
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            if(myrank == 1){
+                cout << "RANK " << myrank << " CUTOUT COUNT: " << cutout_size << endl; 
+                cout << "RANK " << myrank << " ROUGH CUTOUT COUNT: " << rough_cutout_size << endl; 
+                cout << "RANK " << myrank << " CUTOUT COUNT SIZE: " << w.x.size() << endl;
+            } 
+
             MPI_Allgather(&cutout_size, 1, MPI_INT, 
                           &w.np_count[0], 1, MPI_INT, MPI_COMM_WORLD);
             MPI_Allgather(&rough_cutout_size, 1, MPI_INT, 
                           &w.np_rough_count[0], 1, MPI_INT, MPI_COMM_WORLD);
-            int tot_cutout_size; for(int i=0;i<numranks;++i){tot_cutout_size += w.np_count[i];}
-            int tot_rough_cutout_size; for(int i=0;i<numranks;++i){tot_rough_cutout_size += w.np_rough_count[i];}
+            int tot_cutout_size = 0; for(int i=0;i<numranks;++i){tot_cutout_size += w.np_count[i];}
+            int tot_rough_cutout_size = 0; for(int i=0;i<numranks;++i){tot_rough_cutout_size += w.np_rough_count[i];}
             if(myrank == 0){
                 cout << "(" << tot_rough_cutout_size << ") " << tot_cutout_size << 
                         " total particles in (rough) cutout" << endl;
@@ -1477,6 +1512,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // print out offset vector for verification
             if(myrank == 0 and printHalo){
                 if(numranks < 20){
+                    cout << "rank object rough counts: [";
+                    for(int m=0; m < numranks; ++m){ cout << w.np_rough_count[m] << ","; }
+                    cout << "]" << endl;
                     cout << "rank object counts: [";
                     for(int m=0; m < numranks; ++m){ cout << w.np_count[m] << ","; }
                     cout << "]" << endl;
