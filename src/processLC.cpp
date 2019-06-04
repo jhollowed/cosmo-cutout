@@ -1274,7 +1274,9 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             int minN = std::distance(recv_particles.theta.begin(), leftCut_iter);
             int maxN = std::distance(recv_particles.theta.begin(), rightCut_iter);
             
+            // SUPPRESSED DEBUG
             // run with 2 ranks
+            /*
             if(numranks == 2){
                 if(myrank == 0){
                     bool ordered  = true;
@@ -1310,18 +1312,22 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
             }
+            */
                             
             // Now, brute force search on phi to finish rough cutout
             for (int idx=minN; idx<maxN; ++idx){ 
-                
-                if(myrank == 0){
-                    cout << "RANK " << myrank << " AT IDX: " << idx << endl; 
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(myrank == 1){
-                    cout << "RANK " << myrank << " AT IDX: " << idx << endl; 
-                } 
-                MPI_Barrier(MPI_COMM_WORLD);
+               
+                // SUPPRESSED DEBUG
+                //if(numranks == 2){ 
+                //    if(myrank == 0){
+                //        cout << "RANK " << myrank << " AT IDX: " << idx << endl; 
+                //    }
+                //    MPI_Barrier(MPI_COMM_WORLD);
+                //    if(myrank == 1){
+                //        cout << "RANK " << myrank << " AT IDX: " << idx << endl; 
+                //    } 
+                //    MPI_Barrier(MPI_COMM_WORLD);
+                //}
                 
                 int n = theta_argSort[idx]; 
                 float phi = recv_particles.phi[n];
@@ -1479,18 +1485,20 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             w.np_offset.push_back(0);
 
             // get number of elements in each ranks portion of cutout
-            
-            if(myrank == 0){
-                cout << "RANK " << myrank << " CUTOUT COUNT: " << cutout_size << endl; 
-                cout << "RANK " << myrank << " ROUGH CUTOUT COUNT: " << rough_cutout_size << endl; 
-                cout << "RANK " << myrank << " CUTOUT COUNT SIZE: " << w.x.size() << endl;
-            }
-            MPI_Barrier(MPI_COMM_WORLD);
-            if(myrank == 1){
-                cout << "RANK " << myrank << " CUTOUT COUNT: " << cutout_size << endl; 
-                cout << "RANK " << myrank << " ROUGH CUTOUT COUNT: " << rough_cutout_size << endl; 
-                cout << "RANK " << myrank << " CUTOUT COUNT SIZE: " << w.x.size() << endl;
-            } 
+           
+            if(numranks == 2){ 
+                if(myrank == 0){
+                    cout << "RANK " << myrank << " CUTOUT COUNT: " << cutout_size << endl; 
+                    cout << "RANK " << myrank << " ROUGH CUTOUT COUNT: " << rough_cutout_size << endl; 
+                    cout << "RANK " << myrank << " CUTOUT COUNT SIZE: " << w.x.size() << endl;
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(myrank == 1){
+                    cout << "RANK " << myrank << " CUTOUT COUNT: " << cutout_size << endl; 
+                    cout << "RANK " << myrank << " ROUGH CUTOUT COUNT: " << rough_cutout_size << endl; 
+                    cout << "RANK " << myrank << " CUTOUT COUNT SIZE: " << w.x.size() << endl;
+                }
+           } 
 
             MPI_Allgather(&cutout_size, 1, MPI_INT, 
                           &w.np_count[0], 1, MPI_INT, MPI_COMM_WORLD);
