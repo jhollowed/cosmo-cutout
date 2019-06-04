@@ -1006,40 +1006,47 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             vector<int> redist_recv_offset(numranks);
             
             // compute number of particles to send to each other rank
-            if(myrank == 0){cout << "0" << endl;}
+            // SUPPRESSED DEBUG
+            // if(myrank == 0){cout << "0" << endl;}
             comp_rank_scatter(Np, even_redistribute, numranks);
             for(int ri = 0; ri < numranks; ++ri){
                 redist_send_count[ri] = count(&even_redistribute[0], &even_redistribute[Np], ri);
             }
             
             // get number of particles to recieve from every other rank
-            if(myrank == 0){cout << "1" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "1" << endl;}
             MPI_Alltoall(&redist_send_count[0], 1, MPI_INT, &redist_recv_count[0], 1, MPI_INT, MPI_COMM_WORLD);
 
             // compute sending+recieving offsets to/from each other rank
-            if(myrank == 0){cout << "2" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "2" << endl;}
             for(int ri=1; ri < numranks; ++ri){
                 redist_send_offset[ri] = redist_send_offset[ri-1] + redist_send_count[ri-1];
                 redist_recv_offset[ri] = redist_recv_offset[ri-1] + redist_recv_count[ri-1];
             }
             
             // resize reciving buffers
-            if(myrank == 0){cout << "3" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "3" << endl;}
             int tot_num_recv = redist_recv_offset.back() + redist_recv_count.back();
             resize_read_buffers(recv_particles, tot_num_recv, positionOnly);
      
             // OK, all read, now to redsitribute the particles evely-ish across ranks
-            if(myrank == 0){cout << "4" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "4" << endl;}
             POSVEL_T *fcols_send_pos[] = {&r.x[0], &r.y[0], &r.z[0], &r.d[0], &r.theta[0], &r.phi[0], &r.a[0]};
             POSVEL_T *fcols_recv_pos[] = {&recv_particles.x[0], &recv_particles.y[0], &recv_particles.z[0], 
                                           &recv_particles.d[0], &recv_particles.theta[0], &recv_particles.phi[0], 
                                           &recv_particles.a[0]};
 
-            if(myrank == 0){cout << "5" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "5" << endl;}
             POSVEL_T *fcols_send_vel[] = {&r.vx[0], &r.vy[0], &r.vz[0]};
             POSVEL_T *fcols_recv_vel[] = {&recv_particles.vx[0], &recv_particles.vy[0], &recv_particles.vz[0]};
             
-            if(myrank == 0){cout << "6" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "6" << endl;}
             for(int coln; coln < 7; coln++){
                 MPI_Alltoallv(fcols_send_pos[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
                               fcols_recv_pos[coln], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
@@ -1049,7 +1056,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                           &recv_particles.id[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_INT64_T, 
                           MPI_COMM_WORLD);
 
-            if(myrank == 0){cout << "7" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "7" << endl;}
             if(!positionOnly){
                 for(int coln; coln < 3; coln++){
                     MPI_Alltoallv(fcols_send_vel[coln], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
@@ -1064,7 +1072,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                               MPI_INT, MPI_COMM_WORLD);
             }
             
-            if(myrank == 0){cout << "8" << endl;}
+            // SUPPRESSED DEBUG
+            //if(myrank == 0){cout << "8" << endl;}
             // particles now redistributed; find new Np to verify all particles accounted for
             Np = recv_particles.id.size(); 
              
