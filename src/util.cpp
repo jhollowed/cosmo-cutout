@@ -96,29 +96,6 @@ void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extra
 //======================================================================================
 
 
-void sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly){
-
-   reorder_vec(r.x, map);
-   reorder_vec(r.y, map);
-   reorder_vec(r.z, map);
-   reorder_vec(r.d, map);
-   reorder_vec(r.id, map);
-   reorder_vec(r.a, map);
-   reorder_vec(r.theta, map);
-   reorder_vec(r.phi, map);
-   if(!positionOnly){
-       reorder_vec(r.vx, map);
-       reorder_vec(r.vy, map);
-       reorder_vec(r.vz, map);
-       reorder_vec(r.replication, map);
-       reorder_vec(r.rotation, map);
-   }
-}
-
-
-//======================================================================================
-
-
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
     // Constructs a vector divided into numranks chunks sharing a common identifier
     //
