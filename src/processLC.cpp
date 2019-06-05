@@ -1582,7 +1582,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                           &w.np_rough_count[0], 1, MPI_INT, MPI_COMM_WORLD);
             int tot_cutout_size = 0; for(int i=0;i<numranks;++i){tot_cutout_size += w.np_count[i];}
             int tot_rough_cutout_size = 0; for(int i=0;i<numranks;++i){tot_rough_cutout_size += w.np_rough_count[i];}
-            if(myrank == 0){
+            if(myrank == 0 and printHalo){
                 cout << "(" << tot_rough_cutout_size << ") " << tot_cutout_size << 
                         " total particles in (rough) cutout" << endl;
             }
