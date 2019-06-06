@@ -36,7 +36,6 @@ struct Buffers_read {
     vector<POSVEL_T> x;
     vector<POSVEL_T> y;
     vector<POSVEL_T> z;
-    vector<POSVEL_T> d;
     vector<POSVEL_T> vx;
     vector<POSVEL_T> vy;
     vector<POSVEL_T> vz;
@@ -73,11 +72,9 @@ struct Buffers_write {
 struct particle_pos {
 
     // struct for containing individual "primary" particle quantities
-    // d is sqrt(x^2 + y^2 + z^2)
     POSVEL_T x;
     POSVEL_T y;
     POSVEL_T z;
-    POSVEL_T d;
     POSVEL_T theta;
     POSVEL_T phi;
     POSVEL_T a;

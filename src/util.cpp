@@ -20,21 +20,20 @@ MPI_Datatype createParticles_pos(){
     // :return: a struct of custom MPI type "particles_mpi"
 
     MPI_Datatype particles_mpi;
-    MPI_Datatype type[9] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
+    MPI_Datatype type[8] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT,
                             MPI_FLOAT, MPI_FLOAT, MPI_INT64_T, MPI_INT};
-    int blocklen[9] = {1,1,1,1,1,1,1,1};
-    MPI_Aint disp[9] = {
+    int blocklen[8] = {1,1,1,1,1,1,1};
+    MPI_Aint disp[8] = {
                          offsetof(particle_pos, x),
                          offsetof(particle_pos, y),
                          offsetof(particle_pos, z),
-                         offsetof(particle_pos, d),
                          offsetof(particle_pos, theta),
                          offsetof(particle_pos, phi),
                          offsetof(particle_pos, a),
                          offsetof(particle_pos, id),
                          offsetof(particle_pos, myrank)
                         };
-    MPI_Type_struct(9, blocklen, disp, type, &particles_mpi);
+    MPI_Type_struct(8, blocklen, disp, type, &particles_mpi);
     MPI_Type_commit(&particles_mpi);
     return particles_mpi;
 }
@@ -80,7 +79,6 @@ void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extra
         r.z.resize(size + extraSpace/sizeof(POSVEL_T));
         r.a.resize(size + extraSpace/sizeof(POSVEL_T));
         r.id.resize(size + extraSpace/sizeof(ID_T));
-        r.d.resize(size + extraSpace/sizeof(POSVEL_T));
         r.theta.resize(size + extraSpace/sizeof(POSVEL_T));
         r.phi.resize(size + extraSpace/sizeof(POSVEL_T));
         if(!positionOnly){

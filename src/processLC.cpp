@@ -903,8 +903,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             // calc d, theta, and phi per particle
             for (int n=0; n<Np; ++n) {
                 // spherical coordinate transformation
-                r.d[n] = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
-                r.theta[n] = acos(r.z[n]/r.d[n]) * 180.0 / PI * ARCSEC;
+                float d = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
+                r.theta[n] = acos(r.z[n]/d) * 180.0 / PI * ARCSEC;
                 
                 // prevent NaNs on y-z plane
                 if(r.x[n] == 0 && r.y[n] > 0)
@@ -1076,9 +1076,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                           MPI_COMM_WORLD);
             MPI_Alltoallv(&r.a[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
                           &recv_particles.a[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
-                          MPI_COMM_WORLD);
-            MPI_Alltoallv(&r.d[0], &redist_send_count[0], &redist_send_offset[0], MPI_FLOAT,
-                          &recv_particles.d[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_FLOAT, 
                           MPI_COMM_WORLD);
             MPI_Alltoallv(&r.id[0], &redist_send_count[0], &redist_send_offset[0], MPI_INT64_T,
                           &recv_particles.id[0], &redist_recv_count[0], &redist_recv_offset[0], MPI_INT64_T, 
