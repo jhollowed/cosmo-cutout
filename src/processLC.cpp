@@ -758,7 +758,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     props_file << this_halo_props[i] << ", ";
                 for(int i=0; i<this_halo_pos.size(); ++i)
                     props_file << this_halo_pos[i] << ", ";
-                props_file << atan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
+                props_file << tan(halfBoxLength) * halo_r << ", " << halfBoxLength * 180.0/PI * ARCSEC << "\n";
                  
                 props_file.close();
                 if(printHalo){ cout << "wrote halo info to properties.csv" << endl; }
