@@ -123,11 +123,7 @@ bool comp_rank(const T &a, const T &b){
 
 void resize_read_buffers(Buffers_read &r, int size, bool positionOnly, int extraSpace=0);
 
-void sort_read_buffers(Buffers_read &r, const vector<int> &map, bool positionOnly);
-
 void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks);
-
-bool comp_by_theta(const particle_pos &a, const particle_pos &b);
 
 bool does_file_exist(string filename);
 

@@ -113,21 +113,6 @@ void comp_rank_scatter(size_t Np, vector<int> &idxRemap, int numranks){
 //======================================================================================
 
 
-bool comp_by_theta(const particle_pos &a, const particle_pos &b){
-    // Compares two particle_pos structs by their 'theta' field
-    //
-    // Params:
-    // :param a: a particle_pos struct
-    // :param b: a particle_pos struct
-    // :return: 1 if a.theta < b.theta, 0 otherwise
-    
-    return a.theta < b.theta;
-}
-
-
-//======================================================================================
-
-
 bool does_file_exist(string filename){
     // Checks if a file exists     //
     // Params:

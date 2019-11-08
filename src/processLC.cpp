@@ -786,9 +786,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
     size_t max_size = 0;
     int step;
  
-    MPI_Datatype particles_mpi_pos = createParticles_pos();
-    MPI_Datatype particles_mpi_vel = createParticles_vel();
-
     vector<double> read_times;
     vector<double> redist_times;
     vector<double> sort_times;
@@ -860,10 +857,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                 Method = GenericIO::FileIOMPI;  
             }
             
-            MPI_Barrier(MPI_COMM_WORLD); 
-            if(myrank == 0){ cout << "done setting up gio..." << endl; } 
-            MPI_Barrier(MPI_COMM_WORLD); 
-
             // create gio reader, open lightcone file header in new scope
             {
                 MPI_Barrier(MPI_COMM_WORLD); 
@@ -892,15 +885,15 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                     GIO.addVariable("rotation", r.rotation, true); 
                     GIO.addVariable("replication", r.replication, true);
                 }
-
                 GIO.readData(); 
             }
 
             // resize again to remove reader extra space
+            if(myrank == 0){ cout << "resizing..." << endl; }
             resize_read_buffers(r, Np, positionOnly);
-            if(myrank == 0){ cout<<"done resizing"<<endl; }
             
             // calc d, theta, and phi per particle
+            if(myrank == 0){ cout << "calculating angualr coordinates..." << endl; }
             for (int n=0; n<Np; ++n) {
                 // spherical coordinate transformation
                 float d = (float)sqrt( r.x[n]*r.x[n] + r.y[n]*r.y[n] + r.z[n]*r.z[n]);
@@ -992,7 +985,6 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             for(int ri = 0; ri < numranks; ++ri){
                 totalNp += Np_read_per_rank[ri];
             }
-
             if(myrank == 0){
                 cout << "Total number of particles is " << totalNp << endl;
                 cout << "Redistributing particles to all from " << numranks - num_readNone << 
@@ -1218,7 +1210,7 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
         MPI_Barrier(MPI_COMM_WORLD);
         start = MPI_Wtime();
         
-        // arg sort to map new ordering to recv_particles_vel 
+        // arg sort to later map the theta ordering to all other columns for write-out
         vector<int> theta_argSort(Np);
         int idx=0;
         std::iota(theta_argSort.begin(), theta_argSort.end(), idx++);
@@ -1409,7 +1401,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                  
                     // of the particles surviving the rough cut, let's do a proper rotation 
                     // on them to find the true cutout membership, and return cluster-centric 
-                    // angular coordinates
+                    // angular coordinates 
+                    cutout_rough_size++; 
                     
                     // do coordinate rotation center halo at (r, 90, 0)
                     // B and k are the angle and axis of rotation, respectively,
@@ -1452,19 +1445,19 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
                         // spherical corrdinate transform of rotated positions
                         w.theta.push_back(v_theta);
                         w.phi.push_back(v_phi);
-
+                        
                         // other columns
-                        w.x.push_back(recv_particles.x[n]);
-                        w.y.push_back(recv_particles.y[n]);
-                        w.z.push_back(recv_particles.z[n]);
-                        w.redshift.push_back(zz);
-                        w.id.push_back(recv_particles.id[n]);
+                        w.redshift.push_back(aToZ(recv_particles.a[match]));
+                        w.x.push_back(recv_particles.x[match]);
+                        w.y.push_back(recv_particles.y[match]);
+                        w.z.push_back(recv_particles.z[match]);
+                        w.id.push_back(recv_particles.id[match]);
                         if(!positionOnly){ 
-                            w.vx.push_back(recv_particles.vx[n]);
-                            w.vy.push_back(recv_particles.vy[n]);
-                            w.vz.push_back(recv_particles.vz[n]);
-                            w.rotation.push_back(recv_particles.rotation[n]);
-                            w.replication.push_back(recv_particles.replication[n]);
+                            w.vx.push_back(recv_particles.vx[match]);
+                            w.vy.push_back(recv_particles.vy[match]);
+                            w.vz.push_back(recv_particles.vz[match]);
+                            w.rotation.push_back(recv_particles.rotation[match]);
+                            w.replication.push_back(recv_particles.replication[match]);
                         }
                         cutout_size++;
 
@@ -1488,8 +1481,8 @@ void processLC(string dir_name, vector<string> out_dirs, vector<string> step_str
             }
             thisRank_end = clock();
 
+            thisRank_end = clock(); 
             MPI_Barrier(MPI_COMM_WORLD);
-            
             stop = MPI_Wtime();
             duration = stop - start;
             if(myrank == 0 and timeit==true and printHalo){

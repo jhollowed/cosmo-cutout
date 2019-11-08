@@ -3,7 +3,7 @@ CPPFLAGS := -O3 -std=c++11
 SRCDIR := ./src
 TOPDIR := ./cooley
 OBJDIR := $(TOPDIR)/obj
-OBJECTS := $(OBJDIR)/util.o $(OBJDIR)/processLC.o $(OBJDIR)/main.o 
+OBJECTS := $(OBJDIR)/util.o $(OBJDIR)/processLC.o $(OBJDIR)/main.o
 
 TRUNK_LOC := /home/hollowed/repos/lc_interpolation/cooley
 INCLUDES := -I $(SRCDIR) -I /home/hollowed/repos/lc_interpolation/genericio
